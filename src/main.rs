@@ -1,3 +1,5 @@
+mod fluid;
+
 use bevy::{
     camera_controller::free_camera::{FreeCamera, FreeCameraPlugin},
     dev_tools::infinite_grid::{InfiniteGrid, InfiniteGridPlugin, InfiniteGridSettings},
@@ -7,6 +9,8 @@ use bevy::{
         settings::{Backends, RenderCreation, WgpuSettings},
     },
 };
+
+use crate::fluid::{Fluid3d, Fluid3dPlugin};
 
 fn main() {
     App::new()
@@ -21,7 +25,9 @@ fn main() {
             FreeCameraPlugin,
             InfiniteGridPlugin,
         ))
+        .add_plugins(Fluid3dPlugin)
         .add_systems(Startup, setup_dev_tools)
+        .add_systems(Startup, setup_fluid)
         .run();
 }
 
@@ -33,4 +39,12 @@ fn setup_dev_tools(mut commands: Commands) {
     ));
 
     commands.spawn((InfiniteGrid, InfiniteGridSettings::default()));
+}
+
+fn setup_fluid(mut commands: Commands) {
+    commands.spawn(Fluid3d {
+        resolution: UVec3::new(64, 64, 64),
+        rho: 997.0,
+        gravity: -Vec3::Y * 9.8,
+    });
 }

@@ -28,8 +28,6 @@ pub trait FluidComputePass: Sized + Send + Sync + 'static {
                 Res<'static, RenderAssets<GpuShaderBuffer>>,
             ),
         >;
-
-    fn register_assets(_app: &mut App) {}
 }
 
 pub struct FluidComputePassPlugin<T: FluidComputePass> {
