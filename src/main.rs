@@ -1,4 +1,5 @@
 mod fluid;
+mod marching_cubes;
 
 use bevy::{
     camera_controller::free_camera::{FreeCamera, FreeCameraPlugin},
