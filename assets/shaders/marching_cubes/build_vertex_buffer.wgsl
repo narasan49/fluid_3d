@@ -65,18 +65,45 @@ fn build_vertex_buffer(
     );
 
     let cube_levels = array<f32, 8>(
-        textureLoad(sdf, gid + offsets_unit[0]).r,
-        textureLoad(sdf, gid + offsets_unit[1]).r,
-        textureLoad(sdf, gid + offsets_unit[2]).r,
-        textureLoad(sdf, gid + offsets_unit[3]).r,
-        textureLoad(sdf, gid + offsets_unit[4]).r,
-        textureLoad(sdf, gid + offsets_unit[5]).r,
-        textureLoad(sdf, gid + offsets_unit[6]).r,
-        textureLoad(sdf, gid + offsets_unit[7]).r,
+        textureLoad(sdf, gid + offsets_unit[0]).x,
+        textureLoad(sdf, gid + offsets_unit[1]).x,
+        textureLoad(sdf, gid + offsets_unit[2]).x,
+        textureLoad(sdf, gid + offsets_unit[3]).x,
+        textureLoad(sdf, gid + offsets_unit[4]).x,
+        textureLoad(sdf, gid + offsets_unit[5]).x,
+        textureLoad(sdf, gid + offsets_unit[6]).x,
+        textureLoad(sdf, gid + offsets_unit[7]).x,
+    );
+
+    let cube_normanls = array<vec3f, 8>(
+        textureLoad(grad_sdf, gid + offsets_unit[0]).xyz,
+        textureLoad(grad_sdf, gid + offsets_unit[1]).xyz,
+        textureLoad(grad_sdf, gid + offsets_unit[2]).xyz,
+        textureLoad(grad_sdf, gid + offsets_unit[3]).xyz,
+        textureLoad(grad_sdf, gid + offsets_unit[4]).xyz,
+        textureLoad(grad_sdf, gid + offsets_unit[5]).xyz,
+        textureLoad(grad_sdf, gid + offsets_unit[6]).xyz,
+        textureLoad(grad_sdf, gid + offsets_unit[7]).xyz,
     );
 
     let lut_idx = cube_levels_to_idx(cube_levels);
     let triangles = lookup_table[lut_idx];
+    for (var i = 0u; i < triangles.count; i++) {
+        let triangle = triangles.triangles[i];
+        let base_vertex_idx = atomicAdd(&indirect_args.vertex_count, 3u);
+        for (var j = 0u; j < 3u; j++) {
+            let edge = triangle.edges[j];
+
+            let phi0 = cube_levels[edge.a];
+            let phi1 = cube_levels[edge.b];
+            let t = phi0 / (phi0 - phi1);
+            let vertex_offset = mix(offsets[edge.a], offsets[edge.b], t);
+            let position = vec4f(x + vertex_offset, 1.0);
+            let normal = mix(cube_normanls[edge.a], cube_normanls[edge.b], t);
+
+            vertices[base_vertex_idx + j] = Vertex(position, vec4f(normal, 0.0));
+        }
+    }
 }
 
 fn sdf_sign_flag(value: f32) -> u32 {
