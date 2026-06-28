@@ -3,6 +3,7 @@ pub mod apply_forces;
 pub mod divergence;
 pub mod fluid_uniform;
 pub mod initialize;
+pub mod update_solid;
 
 use bevy::{
     core_pipeline::schedule::camera_driver,
@@ -25,6 +26,7 @@ use crate::fluid::{
         divergence::{DivergenceBindGroup, DivergencePass, DivergencePipeline},
         fluid_uniform::{FluidUniformBindGroup, FluidUniformPlugin},
         initialize::{InitializeBindGroup, InitializePass, InitializePipeline},
+        update_solid::{UpdateSolidBindGroup, UpdateSolidPass, UpdateSolidPipeline},
     },
     workgroup::WORKGROUP_SIZE,
 };
@@ -36,6 +38,7 @@ impl Plugin for FluidSimulationPlugin {
         app.add_plugins((
             FluidUniformPlugin,
             FluidComputePassPlugin::<InitializePass>::default(),
+            FluidComputePassPlugin::<UpdateSolidPass>::default(),
             FluidComputePassPlugin::<AdvectVelocityPass>::default(),
             FluidComputePassPlugin::<ApplyForcesPass>::default(),
             FluidComputePassPlugin::<DivergencePass>::default(),
@@ -66,6 +69,7 @@ enum SimulationState {
 struct SimulationBindGroups {
     fluid_uniform_bind_group: &'static FluidUniformBindGroup,
     init_bind_group: &'static InitializeBindGroup,
+    update_solid_bind_group: &'static UpdateSolidBindGroup,
     advect_velocity_bind_group: &'static AdvectVelocityBindGroup,
     apply_forces_bind_group: &'static ApplyForcesBindGroup,
     divergence_bind_group: &'static DivergenceBindGroup,
@@ -73,6 +77,7 @@ struct SimulationBindGroups {
 
 fn update_simulation_state(
     init_pipeline: Res<InitializePipeline>,
+    update_solid_pipeline: Res<UpdateSolidPipeline>,
     advect_velocity_pipeline: Res<AdvectVelocityPipeline>,
     apply_forces_pipeline: Res<ApplyForcesPipeline>,
     divergence_pipeline: Res<DivergencePipeline>,
@@ -85,6 +90,7 @@ fn update_simulation_state(
                 && advect_velocity_pipeline.is_ready(&pipeline_cache)
                 && apply_forces_pipeline.is_ready(&pipeline_cache)
                 && divergence_pipeline.is_ready(&pipeline_cache)
+                && update_solid_pipeline.is_ready(&pipeline_cache)
             {
                 *state = SimulationState::Init;
             }
@@ -101,6 +107,7 @@ fn run_simulation(
     query: Query<(&Fluid3d, SimulationBindGroups)>,
     pipeline_cache: Res<PipelineCache>,
     init_pipeline: Res<InitializePipeline>,
+    update_solid_pipeline: Res<UpdateSolidPipeline>,
     advect_velocity_pipeline: Res<AdvectVelocityPipeline>,
     apply_forces_pipeline: Res<ApplyForcesPipeline>,
     divergence_pipeline: Res<DivergencePipeline>,
@@ -138,6 +145,14 @@ fn run_simulation(
                         });
 
                 info_once!("[once] running fluid simulation");
+                update_solid_pipeline.dispatch(
+                    &pipeline_cache,
+                    &mut pass,
+                    &bind_groups.update_solid_bind_group,
+                    fluid.resolution,
+                    WORKGROUP_SIZE,
+                );
+
                 advect_velocity_pipeline.dispatch(
                     &pipeline_cache,
                     &mut pass,

@@ -10,6 +10,7 @@ pub struct FluidResources {
     pub levelset_air0: Handle<Image>,
     pub levelset_air1: Handle<Image>,
     pub grad_levelset_air: Handle<Image>,
+    pub levelset_solid: Handle<Image>,
     pub u0: Handle<Image>,
     pub u1: Handle<Image>,
     pub u_solid: Handle<Image>,
@@ -24,6 +25,8 @@ impl FluidResources {
         let levelset_air1 = new_texture_storage_3d(images, resolution, TextureFormat::R32Float);
         let grad_levelset_air =
             new_texture_storage_3d(images, resolution, TextureFormat::Rgba16Snorm);
+        let levelset_solid = new_texture_storage_3d(images, resolution, TextureFormat::R32Float);
+
         let u0 = new_texture_storage_3d(images, resolution, TextureFormat::Rgba16Float);
         let u1 = new_texture_storage_3d(images, resolution, TextureFormat::Rgba16Float);
         let u_solid = new_texture_storage_3d(images, resolution, TextureFormat::Rgba16Float);
@@ -35,6 +38,7 @@ impl FluidResources {
             levelset_air0,
             levelset_air1,
             grad_levelset_air,
+            levelset_solid,
             u0,
             u1,
             u_solid,
