@@ -29,8 +29,10 @@ impl FluidComputePass for InitializePass {
 pub struct InitializeResource {
     #[storage_texture(0, image_format = R32Float, dimension = "3d", access = WriteOnly)]
     pub levelset_air0: Handle<Image>,
-    // #[storage_texture(1, image_format = R32Float, dimension = "3d", access = WriteOnly)]
-    // pub levelset_air1: Handle<Image>,
+    #[storage_texture(1, image_format = R32Float, dimension = "3d", access = WriteOnly)]
+    pub levelset_air1: Handle<Image>,
+    #[storage_texture(2, image_format = Rgba16Snorm, dimension = "3d", access = WriteOnly)]
+    pub grad_levelset_air: Handle<Image>,
     // #[storage_texture(2, image_format = Rgba16Float, dimension = "3d", access = WriteOnly)]
     // pub u0: Handle<Image>,
 }
@@ -39,6 +41,8 @@ impl InitializeResource {
     pub fn new(resources: &FluidResources) -> Self {
         Self {
             levelset_air0: resources.levelset_air0.clone(),
+            levelset_air1: resources.levelset_air1.clone(),
+            grad_levelset_air: resources.grad_levelset_air.clone(),
         }
     }
 }
