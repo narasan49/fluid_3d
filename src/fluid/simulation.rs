@@ -1,5 +1,6 @@
 pub mod advect_velocity;
 pub mod apply_forces;
+pub mod divergence;
 pub mod fluid_uniform;
 pub mod initialize;
 
@@ -21,6 +22,7 @@ use crate::fluid::{
     simulation::{
         advect_velocity::{AdvectVelocityBindGroup, AdvectVelocityPass, AdvectVelocityPipeline},
         apply_forces::{ApplyForcesBindGroup, ApplyForcesPass, ApplyForcesPipeline},
+        divergence::{DivergenceBindGroup, DivergencePass, DivergencePipeline},
         fluid_uniform::{FluidUniformBindGroup, FluidUniformPlugin},
         initialize::{InitializeBindGroup, InitializePass, InitializePipeline},
     },
@@ -36,6 +38,7 @@ impl Plugin for FluidSimulationPlugin {
             FluidComputePassPlugin::<InitializePass>::default(),
             FluidComputePassPlugin::<AdvectVelocityPass>::default(),
             FluidComputePassPlugin::<ApplyForcesPass>::default(),
+            FluidComputePassPlugin::<DivergencePass>::default(),
         ));
 
         let Some(render_app) = app.get_sub_app_mut(RenderApp) else {
@@ -65,12 +68,14 @@ struct SimulationBindGroups {
     init_bind_group: &'static InitializeBindGroup,
     advect_velocity_bind_group: &'static AdvectVelocityBindGroup,
     apply_forces_bind_group: &'static ApplyForcesBindGroup,
+    divergence_bind_group: &'static DivergenceBindGroup,
 }
 
 fn update_simulation_state(
     init_pipeline: Res<InitializePipeline>,
     advect_velocity_pipeline: Res<AdvectVelocityPipeline>,
     apply_forces_pipeline: Res<ApplyForcesPipeline>,
+    divergence_pipeline: Res<DivergencePipeline>,
     pipeline_cache: Res<PipelineCache>,
     mut state: ResMut<SimulationState>,
 ) {
@@ -79,6 +84,7 @@ fn update_simulation_state(
             if init_pipeline.is_ready(&pipeline_cache)
                 && advect_velocity_pipeline.is_ready(&pipeline_cache)
                 && apply_forces_pipeline.is_ready(&pipeline_cache)
+                && divergence_pipeline.is_ready(&pipeline_cache)
             {
                 *state = SimulationState::Init;
             }
@@ -97,6 +103,7 @@ fn run_simulation(
     init_pipeline: Res<InitializePipeline>,
     advect_velocity_pipeline: Res<AdvectVelocityPipeline>,
     apply_forces_pipeline: Res<ApplyForcesPipeline>,
+    divergence_pipeline: Res<DivergencePipeline>,
     state: ResMut<SimulationState>,
 ) {
     match *state {
@@ -144,6 +151,15 @@ fn run_simulation(
                     &pipeline_cache,
                     &mut pass,
                     &bind_groups.apply_forces_bind_group,
+                    &bind_groups.fluid_uniform_bind_group,
+                    fluid.resolution,
+                    WORKGROUP_SIZE,
+                );
+
+                divergence_pipeline.dispatch(
+                    &pipeline_cache,
+                    &mut pass,
+                    &bind_groups.divergence_bind_group,
                     &bind_groups.fluid_uniform_bind_group,
                     fluid.resolution,
                     WORKGROUP_SIZE,

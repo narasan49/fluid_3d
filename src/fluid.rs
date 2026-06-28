@@ -7,8 +7,8 @@ use crate::fluid::{
     resources::FluidResources,
     simulation::{
         FluidSimulationPlugin, advect_velocity::AdvectVelocityResource,
-        apply_forces::ApplyForcesResource, fluid_uniform::FluidUniform,
-        initialize::InitializeResource,
+        apply_forces::ApplyForcesResource, divergence::DivergenceResource,
+        fluid_uniform::FluidUniform, initialize::InitializeResource,
     },
 };
 
@@ -54,6 +54,7 @@ fn setup_fluid_component(
         let init_resource = InitializeResource::new(&resources);
         let advect_velocity_resource = AdvectVelocityResource::new(&resources);
         let apply_forces_resource = ApplyForcesResource::new(&resources);
+        let divergence_resource = DivergenceResource::new(&resources);
 
         commands.entity(entity).insert((
             fluid_uniform,
@@ -61,6 +62,7 @@ fn setup_fluid_component(
             init_resource,
             advect_velocity_resource,
             apply_forces_resource,
+            divergence_resource,
         ));
     }
 }
