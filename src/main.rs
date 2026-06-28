@@ -1,4 +1,5 @@
 mod fluid;
+mod marching_cubes;
 
 use bevy::{
     camera_controller::free_camera::{FreeCamera, FreeCameraPlugin},
@@ -10,7 +11,10 @@ use bevy::{
     },
 };
 
-use crate::fluid::{Fluid3d, Fluid3dPlugin};
+use crate::{
+    fluid::{Fluid3d, Fluid3dPlugin, resources::FluidResources},
+    marching_cubes::{MarchingCubes, MarchingCubesPlugin},
+};
 
 fn main() {
     App::new()
@@ -25,9 +29,10 @@ fn main() {
             FreeCameraPlugin,
             InfiniteGridPlugin,
         ))
-        .add_plugins(Fluid3dPlugin)
+        .add_plugins((Fluid3dPlugin, MarchingCubesPlugin))
         .add_systems(Startup, setup_dev_tools)
         .add_systems(Startup, setup_fluid)
+        .add_systems(Update, setup_fluid_render)
         .run();
 }
 
@@ -47,4 +52,18 @@ fn setup_fluid(mut commands: Commands) {
         rho: 997.0,
         gravity: -Vec3::Y * 9.8,
     });
+}
+
+// レベルセットテクスチャをMarchingCubesに渡して描画する
+fn setup_fluid_render(
+    mut commands: Commands,
+    query: Query<(Entity, &FluidResources, &Fluid3d), Added<FluidResources>>,
+) {
+    for (entity, resources, fluid) in &query {
+        commands.entity(entity).insert(MarchingCubes {
+            sdf: resources.levelset_air0.clone(),
+            grad_sdf: resources.grad_levelset_air.clone(),
+            resolution: fluid.resolution,
+        });
+    }
 }

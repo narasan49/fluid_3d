@@ -8,13 +8,22 @@ use bevy::{
 #[derive(Component)]
 pub struct FluidResources {
     pub levelset_air0: Handle<Image>,
+    pub levelset_air1: Handle<Image>,
+    pub grad_levelset_air: Handle<Image>,
 }
 
 impl FluidResources {
     pub fn new(images: &mut Assets<Image>, resolution: UVec3) -> Self {
         let levelset_air0 = new_texture_storage_3d(images, resolution, TextureFormat::R32Float);
+        let levelset_air1 = new_texture_storage_3d(images, resolution, TextureFormat::R32Float);
+        let grad_levelset_air =
+            new_texture_storage_3d(images, resolution, TextureFormat::Rgba16Snorm);
 
-        Self { levelset_air0 }
+        Self {
+            levelset_air0,
+            levelset_air1,
+            grad_levelset_air,
+        }
     }
 }
 
