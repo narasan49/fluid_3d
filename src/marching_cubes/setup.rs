@@ -8,7 +8,10 @@ use bevy::{
 };
 
 use crate::marching_cubes::{
-    MarchingCubes, build_vertex_buffer::BuildVertexBufferResource, lookup_table::LUT,
+    MarchingCubes,
+    build_vertex_buffer::BuildVertexBufferResource,
+    draw::{MarchingCubesDrawResource, MarchingCubesUniform},
+    lookup_table::LUT,
 };
 
 #[derive(ShaderType, Clone, Default)]
@@ -54,6 +57,19 @@ pub fn setup_marching_cubes_resources(
             grad_sdf: marching_cubes.grad_sdf.clone(),
         };
 
-        commands.entity(entity).insert(build_vertex_buffer_resource);
+        let marching_cubes_draw_resourcce = MarchingCubesDrawResource {
+            vertices,
+            indirect_args,
+        };
+
+        let marching_cubes_uniform = MarchingCubesUniform {
+            world_from_local: Mat4::IDENTITY,
+        };
+
+        commands.entity(entity).insert((
+            build_vertex_buffer_resource,
+            marching_cubes_draw_resourcce,
+            marching_cubes_uniform,
+        ));
     }
 }

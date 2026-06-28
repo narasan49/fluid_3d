@@ -8,7 +8,7 @@ fn initialize(
 ) {
     // ToDo: いったん初期値をハードコード
     let surface_level = 10.0;
-    textureStore(levelset_air0, gid, vec4f(surface_level - f32(gid.y), vec3f(0)));
-    textureStore(levelset_air1, gid, vec4f(surface_level - f32(gid.y), vec3f(0)));
+    textureStore(levelset_air0, gid, vec4f(f32(gid.y) - surface_level, vec3f(0)));
+    textureStore(levelset_air1, gid, vec4f(f32(gid.y) - surface_level, vec3f(0)));
     textureStore(grad_levelset_air, gid, vec4f(0.0, 1.0, 0.0, 0.0));
 }
