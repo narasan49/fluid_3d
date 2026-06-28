@@ -48,7 +48,7 @@ fn build_vertex_buffer(
     @builtin(global_invocation_id) gid: vec3u,
 ) {
     let dim = textureDimensions(sdf);
-    if any(gid >= dim) {
+    if any(gid >= (dim - vec3u(1))) {
         return;
     }
     let dimf = vec3f(dim);
