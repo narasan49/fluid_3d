@@ -1,3 +1,5 @@
+pub mod advect_velocity;
+pub mod fluid_uniform;
 pub mod initialize;
 
 use bevy::{
@@ -15,7 +17,11 @@ use crate::fluid::{
     Fluid3d,
     compute_pass::FluidComputePassPlugin,
     pipeline::FluidPipeline,
-    simulation::initialize::{InitializeBindGroup, InitializePass, InitializePipeline},
+    simulation::{
+        advect_velocity::{AdvectVelocityBindGroup, AdvectVelocityPass, AdvectVelocityPipeline},
+        fluid_uniform::{FluidUniformBindGroup, FluidUniformPlugin},
+        initialize::{InitializeBindGroup, InitializePass, InitializePipeline},
+    },
     workgroup::WORKGROUP_SIZE,
 };
 
@@ -23,7 +29,11 @@ pub struct FluidSimulationPlugin;
 
 impl Plugin for FluidSimulationPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(FluidComputePassPlugin::<InitializePass>::default());
+        app.add_plugins((
+            FluidUniformPlugin,
+            FluidComputePassPlugin::<InitializePass>::default(),
+            FluidComputePassPlugin::<AdvectVelocityPass>::default(),
+        ));
 
         let Some(render_app) = app.get_sub_app_mut(RenderApp) else {
             return;
@@ -49,16 +59,21 @@ enum SimulationState {
 #[derive(QueryData)]
 struct SimulationBindGroups {
     init_bind_group: &'static InitializeBindGroup,
+    advect_velocity_bind_group: &'static AdvectVelocityBindGroup,
+    fluid_uniform_bind_group: &'static FluidUniformBindGroup,
 }
 
 fn update_simulation_state(
     init_pipeline: Res<InitializePipeline>,
+    advect_velocity_pipeline: Res<AdvectVelocityPipeline>,
     pipeline_cache: Res<PipelineCache>,
     mut state: ResMut<SimulationState>,
 ) {
     match *state {
         SimulationState::Loading => {
-            if init_pipeline.is_ready(&pipeline_cache) {
+            if init_pipeline.is_ready(&pipeline_cache)
+                && advect_velocity_pipeline.is_ready(&pipeline_cache)
+            {
                 *state = SimulationState::Init;
             }
         }
@@ -74,20 +89,20 @@ fn run_simulation(
     query: Query<(&Fluid3d, SimulationBindGroups)>,
     pipeline_cache: Res<PipelineCache>,
     init_pipeline: Res<InitializePipeline>,
+    advect_velocity_pipeline: Res<AdvectVelocityPipeline>,
     state: ResMut<SimulationState>,
 ) {
     match *state {
         SimulationState::Loading => {}
         SimulationState::Init => {
-            let mut pass =
-                render_context
-                    .command_encoder()
-                    .begin_compute_pass(&ComputePassDescriptor {
-                        label: Some("init_fluid_3d"),
-                        ..default()
-                    });
-
             for (fluid, bind_groups) in &query {
+                let mut pass =
+                    render_context
+                        .command_encoder()
+                        .begin_compute_pass(&ComputePassDescriptor {
+                            label: Some("init_fluid_3d"),
+                            ..default()
+                        });
                 info_once!("[once] initializing fluid");
                 init_pipeline.dispatch(
                     &pipeline_cache,
@@ -98,6 +113,26 @@ fn run_simulation(
                 );
             }
         }
-        SimulationState::Update => {}
+        SimulationState::Update => {
+            for (fluid, bind_groups) in &query {
+                let mut pass =
+                    render_context
+                        .command_encoder()
+                        .begin_compute_pass(&ComputePassDescriptor {
+                            label: Some("run_fluid_3d"),
+                            ..default()
+                        });
+
+                info_once!("[once] running fluid simulation");
+                advect_velocity_pipeline.dispatch(
+                    &pipeline_cache,
+                    &mut pass,
+                    &bind_groups.advect_velocity_bind_group,
+                    &bind_groups.fluid_uniform_bind_group,
+                    fluid.resolution,
+                    WORKGROUP_SIZE,
+                );
+            }
+        }
     }
 }

@@ -5,7 +5,10 @@ use bevy::{
 
 use crate::fluid::{
     resources::FluidResources,
-    simulation::{FluidSimulationPlugin, initialize::InitializeResource},
+    simulation::{
+        FluidSimulationPlugin, advect_velocity::AdvectVelocityResource,
+        fluid_uniform::FluidUniform, initialize::InitializeResource,
+    },
 };
 
 pub mod compute_pass;
@@ -25,6 +28,7 @@ impl Plugin for Fluid3dPlugin {
 }
 
 #[derive(Component, ExtractComponent, Clone)]
+#[require(Transform)]
 pub struct Fluid3d {
     pub resolution: UVec3,
     pub rho: f32,
@@ -33,14 +37,27 @@ pub struct Fluid3d {
 
 fn setup_fluid_component(
     mut commands: Commands,
-    query: Query<(Entity, &Fluid3d), Added<Fluid3d>>,
+    query: Query<(Entity, &Fluid3d, &Transform), Added<Fluid3d>>,
     mut images: ResMut<Assets<Image>>,
 ) {
-    for (entity, fluid3d) in &query {
+    for (entity, fluid3d, transform) in &query {
         let resources = FluidResources::new(&mut images, fluid3d.resolution);
-
+        let fluid_uniform = FluidUniform {
+            dx: 1.0,
+            dt: 0.0,
+            rho: fluid3d.rho,
+            resolution: fluid3d.resolution,
+            gravity: fluid3d.gravity,
+            transform: transform.to_matrix(),
+        };
         let init_resource = InitializeResource::new(&resources);
+        let advect_velocity_resource = AdvectVelocityResource::new(&resources);
 
-        commands.entity(entity).insert((resources, init_resource));
+        commands.entity(entity).insert((
+            fluid_uniform,
+            resources,
+            init_resource,
+            advect_velocity_resource,
+        ));
     }
 }
