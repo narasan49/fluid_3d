@@ -3,6 +3,7 @@ pub mod apply_forces;
 pub mod divergence;
 pub mod fluid_uniform;
 pub mod initialize;
+pub mod projection;
 pub mod update_fluid_fraction;
 pub mod update_solid;
 

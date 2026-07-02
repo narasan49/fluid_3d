@@ -27,6 +27,8 @@ pub struct FluidResources {
     pub fluid_fraction: Handle<Image>,
     /// ボクセルの発散場
     pub div: Handle<Image>,
+    /// 流体の圧力
+    pub p: Handle<Image>,
 }
 
 impl FluidResources {
@@ -44,6 +46,7 @@ impl FluidResources {
         let fluid_fraction =
             new_texture_storage_3d(images, resolution_xyz, TextureFormat::Rgba16Float);
         let div = new_texture_storage_3d(images, resolution, TextureFormat::R32Float);
+        let p = new_texture_storage_3d(images, resolution, TextureFormat::R32Float);
 
         Self {
             levelset_air0,
@@ -55,6 +58,7 @@ impl FluidResources {
             u_solid,
             fluid_fraction,
             div,
+            p,
         }
     }
 }
