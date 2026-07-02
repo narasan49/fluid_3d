@@ -9,7 +9,7 @@ use crate::fluid::{
         FluidSimulationPlugin, advect_velocity::AdvectVelocityResource,
         apply_forces::ApplyForcesResource, divergence::DivergenceResource,
         fluid_uniform::FluidUniform, initialize::InitializeResource,
-        update_solid::UpdateSolidResource,
+        update_solid::UpdateSolidResource, update_solid_fraction::UpdateSolidFractionResource,
     },
 };
 
@@ -55,6 +55,7 @@ fn setup_fluid_component(
         let init_resource = InitializeResource::new(&resources);
 
         let update_solid_resource = UpdateSolidResource::new(&resources);
+        let update_solid_fraction_resource = UpdateSolidFractionResource::new(&resources);
         let advect_velocity_resource = AdvectVelocityResource::new(&resources);
         let apply_forces_resource = ApplyForcesResource::new(&resources);
         let divergence_resource = DivergenceResource::new(&resources);
@@ -64,6 +65,7 @@ fn setup_fluid_component(
             resources,
             init_resource,
             update_solid_resource,
+            update_solid_fraction_resource,
             advect_velocity_resource,
             apply_forces_resource,
             divergence_resource,
