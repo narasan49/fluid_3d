@@ -2,7 +2,7 @@
 
 @group(0) @binding(0) var u1: texture_storage_3d<rgba16float, read>;
 @group(0) @binding(1) var u_solid: texture_storage_3d<rgba16float, read>;
-@group(0) @binding(2) var solid_fraction: texture_storage_3d<rgba16float, read>;
+@group(0) @binding(2) var fluid_fraction: texture_storage_3d<rgba16float, read>;
 @group(0) @binding(3) var div: texture_storage_3d<r32float, write>;
 
 @group(1) @binding(0) var<uniform> fluid_uniform: FluidUniform;
@@ -42,15 +42,15 @@ fn divergence(
         textureLoad(u_solid, gid + vec3u(0, 0, 1)).z,
     );
     
-    let f_minus = textureLoad(solid_fraction, gid).xyz;
+    let f_minus = textureLoad(fluid_fraction, gid).xyz;
     let f_plus = vec3f(
-        textureLoad(solid_fraction, gid + vec3u(1, 0, 0)).x,
-        textureLoad(solid_fraction, gid + vec3u(0, 1, 0)).y,
-        textureLoad(solid_fraction, gid + vec3u(0, 0, 1)).z,
+        textureLoad(fluid_fraction, gid + vec3u(1, 0, 0)).x,
+        textureLoad(fluid_fraction, gid + vec3u(0, 1, 0)).y,
+        textureLoad(fluid_fraction, gid + vec3u(0, 0, 1)).z,
     );
     
-    let du = (1.0 - f_plus) * 0.5 * (u_plus + u_center) - (1.0 - f_minus) * 0.5 * (u_minus + u_center);
-    let du_solid = f_plus * 0.5 * (u_solid_plus + u_solid_center) - f_minus * 0.5 * (u_solid_minus + u_solid_center);
+    let du = f_plus* 0.5 * (u_plus + u_center) - f_minus * 0.5 * (u_minus + u_center);
+    let du_solid = (1.0 - f_plus) * 0.5 * (u_solid_plus + u_solid_center) - (1.0 - f_minus) * 0.5 * (u_solid_minus + u_solid_center);
     let result = - (du.x + du.y + du.z + du_solid.x + du_solid.y + du_solid.z) / fluid_uniform.dx;
 
     textureStore(div, gid, vec4f(result, 0.0, 0.0, 0.0));

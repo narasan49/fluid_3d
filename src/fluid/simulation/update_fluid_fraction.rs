@@ -17,47 +17,47 @@ use crate::fluid::{
     workgroup::num_workgroups,
 };
 
-pub struct UpdateSolidFractionPass;
-//
-impl FluidComputePass for UpdateSolidFractionPass {
-    type B = UpdateSolidFractionBindGroup;
-    type P = UpdateSolidFractionPipeline;
-    type R = UpdateSolidFractionResource;
+pub struct UpdateFluidFractionPass;
+
+impl FluidComputePass for UpdateFluidFractionPass {
+    type B = UpdateFluidFractionBindGroup;
+    type P = UpdateFluidFractionPipeline;
+    type R = UpdateFluidFractionResource;
 }
 
 #[derive(Component, ExtractComponent, Clone, AsBindGroup)]
-pub struct UpdateSolidFractionResource {
+pub struct UpdateFluidFractionResource {
     #[storage_texture(0, image_format = R32Float, dimension = "3d", access = ReadOnly)]
     pub levelset_solid: Handle<Image>,
     #[storage_texture(1, image_format = Rgba16Float, dimension = "3d", access = WriteOnly)]
-    pub solid_fraction: Handle<Image>,
+    pub fluid_fraction: Handle<Image>,
 }
 
-impl UpdateSolidFractionResource {
+impl UpdateFluidFractionResource {
     pub fn new(resources: &FluidResources) -> Self {
         Self {
             levelset_solid: resources.levelset_solid.clone(),
-            solid_fraction: resources.solid_fraction.clone(),
+            fluid_fraction: resources.fluid_fraction.clone(),
         }
     }
 }
 
 #[derive(Resource)]
-pub struct UpdateSolidFractionPipeline {
+pub struct UpdateFluidFractionPipeline {
     pipeline: CachedComputePipelineId,
     bind_group_layout: BindGroupLayoutDescriptor,
 }
 
-impl UpdateSolidFractionPipeline {
+impl UpdateFluidFractionPipeline {
     pub fn dispatch(
         &self,
         pipeline_cache: &PipelineCache,
         pass: &mut ComputePass,
-        bind_group: &UpdateSolidFractionBindGroup,
+        bind_group: &UpdateFluidFractionBindGroup,
         resolution: UVec3,
         workgroup_size: UVec3,
     ) {
-        pass.push_debug_group("update_solid_fraction");
+        pass.push_debug_group("update_fluid_fraction");
         let pipeline = pipeline_cache.get_compute_pipeline(self.pipeline).unwrap();
         let num_wg = num_workgroups(resolution + UVec3::ONE, workgroup_size);
         pass.set_pipeline(pipeline);
@@ -68,7 +68,7 @@ impl UpdateSolidFractionPipeline {
     }
 }
 
-impl FluidPipeline for UpdateSolidFractionPipeline {
+impl FluidPipeline for UpdateFluidFractionPipeline {
     fn bind_group_layoput(&self) -> &BindGroupLayoutDescriptor {
         &self.bind_group_layout
     }
@@ -78,20 +78,20 @@ impl FluidPipeline for UpdateSolidFractionPipeline {
     }
 }
 
-impl FromWorld for UpdateSolidFractionPipeline {
+impl FromWorld for UpdateFluidFractionPipeline {
     fn from_world(world: &mut World) -> Self {
         let render_device = world.resource::<RenderDevice>();
         let pipeline_cache = world.resource::<PipelineCache>();
         let asset_server = world.resource::<AssetServer>();
 
         let bind_group_layout =
-            UpdateSolidFractionResource::bind_group_layout_descriptor(render_device);
+            UpdateFluidFractionResource::bind_group_layout_descriptor(render_device);
 
         let pipeline = pipeline_cache.queue_compute_pipeline(ComputePipelineDescriptor {
-            label: Some("update_solid_fraction_pipeline".into()),
+            label: Some("update_fluid_fraction_pipeline".into()),
             layout: vec![bind_group_layout.clone()],
-            shader: asset_server.load("shaders/simulation/update_solid_fraction.wgsl"),
-            entry_point: Some("update_solid_fraction".into()),
+            shader: asset_server.load("shaders/simulation/update_fluid_fraction.wgsl"),
+            entry_point: Some("update_fluid_fraction".into()),
             ..default()
         });
 
@@ -103,11 +103,11 @@ impl FromWorld for UpdateSolidFractionPipeline {
 }
 
 #[derive(Component)]
-pub struct UpdateSolidFractionBindGroup {
+pub struct UpdateFluidFractionBindGroup {
     bind_group: BindGroup,
 }
 
-impl From<BindGroup> for UpdateSolidFractionBindGroup {
+impl From<BindGroup> for UpdateFluidFractionBindGroup {
     fn from(bind_group: BindGroup) -> Self {
         Self { bind_group }
     }

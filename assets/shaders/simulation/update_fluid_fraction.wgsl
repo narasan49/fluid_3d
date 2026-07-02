@@ -1,11 +1,11 @@
 @group(0) @binding(0) var levelset_solid: texture_storage_3d<r32float, read>;
-@group(0) @binding(1) var solid_fraction: texture_storage_3d<rgba16float, write>;
+@group(0) @binding(1) var fluid_fraction: texture_storage_3d<rgba16float, write>;
 
 @compute @workgroup_size(8, 8, 4)
-fn update_solid_fraction(
+fn update_fluid_fraction(
     @builtin(global_invocation_id) gid: vec3u,
 ) {
-    let dim = textureDimensions(solid_fraction);
+    let dim = textureDimensions(fluid_fraction);
     if any(gid >= dim) {
         return;
     }
@@ -20,13 +20,13 @@ fn update_solid_fraction(
         if gid.z == 0 || gid.z == (dim.z - 1) {
             f_edge.z = 0.0;
         }
-        textureStore(solid_fraction, gid, vec4f(f_edge, 0.0));
+        textureStore(fluid_fraction, gid, vec4f(f_edge, 0.0));
         return;
     }
 
     let fraction = area_fraction(levelset_solid, gid - vec3u(1));
 
-    textureStore(solid_fraction, gid, vec4f(fraction, 0.0));
+    textureStore(fluid_fraction, gid, vec4f(fraction, 0.0));
 }
 
 fn area_fraction(
@@ -153,16 +153,16 @@ fn area_fraction_triangle(
     }
 
     if 0.0 <= phis.x {
-        return 0.0;
+        return 1.0;
     } else if 0.0 <= phis.y {
         let theta20 = phis.x / (phis.x - phis.z);
         let theta10 = phis.x / (phis.x - phis.y);
-        return theta10 * theta20;
+        return 1.0 - theta10 * theta20;
     } else if 0.0 <= phis.z {
         let theta02 = phis.z / (phis.z - phis.x);
         let theta12 = phis.z / (phis.z - phis.y);
-        return 1.0 - theta02 * theta12;
+        return theta02 * theta12;
     } else {
-        return 1.0;
+        return 0.0;
     }
 }

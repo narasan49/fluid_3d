@@ -33,7 +33,7 @@ pub struct DivergenceResource {
     #[storage_texture(1, image_format = Rgba16Float, dimension = "3d", access = ReadOnly)]
     pub u_solid: Handle<Image>,
     #[storage_texture(2, image_format = Rgba16Float, dimension = "3d", access = ReadOnly)]
-    pub solid_fraction: Handle<Image>,
+    pub fluid_fraction: Handle<Image>,
     #[storage_texture(3, image_format = R32Float, dimension = "3d", access = WriteOnly)]
     pub div: Handle<Image>,
 }
@@ -43,7 +43,7 @@ impl DivergenceResource {
         Self {
             u1: resources.u1.clone(),
             u_solid: resources.u_solid.clone(),
-            solid_fraction: resources.solid_fraction.clone(),
+            fluid_fraction: resources.fluid_fraction.clone(),
             div: resources.div.clone(),
         }
     }
