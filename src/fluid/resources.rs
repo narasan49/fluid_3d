@@ -7,14 +7,25 @@ use bevy::{
 
 #[derive(Component)]
 pub struct FluidResources {
+    /// 流体レベルセット(SDF)。0未満が流体、0以上がそれ以外を表す。
     pub levelset_air0: Handle<Image>,
+    /// 流体レベルセットの中間バッファ
     pub levelset_air1: Handle<Image>,
+    /// 流体レベルセットの勾配
     pub grad_levelset_air: Handle<Image>,
+    /// 剛体レベルセット。0未満が剛体、0以上がそれ以外を表す。
     pub levelset_solid: Handle<Image>,
+    /// ボクセルが流体を含むときの流体の速度
     pub u0: Handle<Image>,
+    /// 流体速度の中間バッファ
     pub u1: Handle<Image>,
+    /// ボクセルが固体を含むときの固体の速度
     pub u_solid: Handle<Image>,
+    /// ボクセルの各面における固体が占める割合(area fraction)。
+    /// rgbチャンネルに-X, -Y, -Z面のarea fractionを格納する。
+    /// サイズは resolution + UVec3::ONE
     pub solid_fraction: Handle<Image>,
+    /// ボクセルの発散場
     pub div: Handle<Image>,
 }
 
