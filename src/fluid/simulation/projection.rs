@@ -1,16 +1,21 @@
 use bevy::{
-    material::descriptor::{BindGroupLayoutDescriptor, CachedComputePipelineId},
+    material::descriptor::{
+        BindGroupLayoutDescriptor, CachedComputePipelineId, ComputePipelineDescriptor,
+    },
     prelude::*,
     render::{
         extract_component::{ExtractComponent, ExtractComponentPlugin},
-        render_resource::{BindGroup, ComputePass, ComputePipeline, PipelineCache, TextureFormat},
+        render_resource::{
+            BindGroup, BindGroupLayoutEntries, ComputePass, ComputePipeline, PipelineCache,
+            ShaderStages, StorageTextureAccess, TextureFormat,
+            binding_types::{texture_storage_3d, uniform_buffer},
+        },
     },
 };
 
 use crate::fluid::{
-    pipeline::FluidPipeline,
     resources::{FluidResources, new_texture_storage_3d},
-    simulation::fluid_uniform::FluidUniformBindGroup,
+    simulation::fluid_uniform::{FluidUniformBindGroup, FluidUniformBindGroupLayout},
     workgroup::num_workgroups,
 };
 
@@ -43,7 +48,8 @@ pub struct MultigridProjectionResources {
 
 #[derive(Resource)]
 pub struct MultigridProjectionPipeline {
-    gauss_seidel_pipeline: CachedComputePipelineId,
+    gauss_seidel_red_pipeline: CachedComputePipelineId,
+    gauss_seidel_black_pipeline: CachedComputePipelineId,
     residual_pipeline: CachedComputePipelineId,
     restriction_pipeline: CachedComputePipelineId,
     prolongation_pipeline: CachedComputePipelineId,
@@ -66,8 +72,11 @@ impl MultigridProjectionPipeline {
         workgroup_size: UVec3,
     ) {
         pass.push_debug_group("multigrid_projection");
-        let gauss_seidel_pipeline = pipeline_cache
-            .get_compute_pipeline(self.gauss_seidel_pipeline)
+        let gauss_seidel_red_pipeline = pipeline_cache
+            .get_compute_pipeline(self.gauss_seidel_red_pipeline)
+            .unwrap();
+        let gauss_seidel_black_pipeline = pipeline_cache
+            .get_compute_pipeline(self.gauss_seidel_black_pipeline)
             .unwrap();
         let residual_pipeline = pipeline_cache
             .get_compute_pipeline(self.residual_pipeline)
@@ -87,7 +96,8 @@ impl MultigridProjectionPipeline {
 
         self.v_cycle(
             pass,
-            gauss_seidel_pipeline,
+            gauss_seidel_red_pipeline,
+            gauss_seidel_black_pipeline,
             residual_pipeline,
             restriction_pipeline,
             prolongation_pipeline,
@@ -105,7 +115,8 @@ impl MultigridProjectionPipeline {
     fn v_cycle(
         &self,
         pass: &mut ComputePass,
-        gauss_seidel_pipeline: &ComputePipeline,
+        gauss_seidel_red_pipeline: &ComputePipeline,
+        gauss_seidel_black_pipeline: &ComputePipeline,
         residual_pipeline: &ComputePipeline,
         restriction_pipeline: &ComputePipeline,
         prolongation_pipeline: &ComputePipeline,
@@ -119,18 +130,22 @@ impl MultigridProjectionPipeline {
         let workgroups = num_workgroups(resolution, workgroup_size);
         if level == num_levels - 1 {
             pass.push_debug_group("solve_coarsest");
-            pass.set_pipeline(gauss_seidel_pipeline);
             pass.set_bind_group(0, &bind_groups.gauss_seidel_bind_groups[level], &[]);
             for _ in 0..config.num_coarsest {
+                pass.set_pipeline(gauss_seidel_red_pipeline);
+                pass.dispatch_workgroups(workgroups.x, workgroups.y, workgroups.z);
+                pass.set_pipeline(gauss_seidel_black_pipeline);
                 pass.dispatch_workgroups(workgroups.x, workgroups.y, workgroups.z);
             }
             pass.pop_debug_group();
             return;
         }
         pass.push_debug_group("pre_smooth");
-        pass.set_pipeline(gauss_seidel_pipeline);
         pass.set_bind_group(0, &bind_groups.gauss_seidel_bind_groups[level], &[]);
         for _ in 0..config.num_pre_smooth {
+            pass.set_pipeline(gauss_seidel_red_pipeline);
+            pass.dispatch_workgroups(workgroups.x, workgroups.y, workgroups.z);
+            pass.set_pipeline(gauss_seidel_black_pipeline);
             pass.dispatch_workgroups(workgroups.x, workgroups.y, workgroups.z);
         }
         pass.pop_debug_group();
@@ -149,7 +164,8 @@ impl MultigridProjectionPipeline {
 
         self.v_cycle(
             pass,
-            gauss_seidel_pipeline,
+            gauss_seidel_red_pipeline,
+            gauss_seidel_black_pipeline,
             residual_pipeline,
             restriction_pipeline,
             prolongation_pipeline,
@@ -168,12 +184,71 @@ impl MultigridProjectionPipeline {
         pass.pop_debug_group();
 
         pass.push_debug_group("post_smooth");
-        pass.set_pipeline(gauss_seidel_pipeline);
         pass.set_bind_group(0, &bind_groups.gauss_seidel_bind_groups[level], &[]);
         for _ in 0..config.num_post_smooth {
+            pass.set_pipeline(gauss_seidel_red_pipeline);
+            pass.dispatch_workgroups(workgroups.x, workgroups.y, workgroups.z);
+            pass.set_pipeline(gauss_seidel_black_pipeline);
             pass.dispatch_workgroups(workgroups.x, workgroups.y, workgroups.z);
         }
         pass.pop_debug_group();
+    }
+}
+
+impl FromWorld for MultigridProjectionPipeline {
+    fn from_world(world: &mut World) -> Self {
+        let pipeline_cache = world.resource::<PipelineCache>();
+        let asset_server = world.resource::<AssetServer>();
+
+        let uniform_bind_group_layout = world.resource::<FluidUniformBindGroupLayout>();
+        let gauss_seidel_bind_group_layout = BindGroupLayoutDescriptor::new(
+            "gauss_seidel_bind_group_layout",
+            &BindGroupLayoutEntries::sequential(
+                ShaderStages::COMPUTE,
+                (
+                    texture_storage_3d(TextureFormat::R32Float, StorageTextureAccess::ReadOnly),
+                    texture_storage_3d(TextureFormat::R32Float, StorageTextureAccess::ReadOnly),
+                    texture_storage_3d(TextureFormat::Rgba16Float, StorageTextureAccess::ReadOnly),
+                    texture_storage_3d(TextureFormat::R32Float, StorageTextureAccess::ReadOnly),
+                    uniform_buffer(false),
+                ),
+            ),
+        );
+
+        let gauss_seidel_red_pipeline =
+            pipeline_cache.queue_compute_pipeline(ComputePipelineDescriptor {
+                label: Some("gauss_seidel_red_pipeline".into()),
+                layout: vec![
+                    gauss_seidel_bind_group_layout.clone(),
+                    uniform_bind_group_layout.0.clone(),
+                ],
+                shader: asset_server.load("shaders/simulation/projection/gauss_seidel.wgsl"),
+                entry_point: Some("gauss_seidel_red".into()),
+                ..default()
+            });
+        let gauss_seidel_black_pipeline =
+            pipeline_cache.queue_compute_pipeline(ComputePipelineDescriptor {
+                label: Some("gauss_seidel_black_pipeline".into()),
+                layout: vec![
+                    gauss_seidel_bind_group_layout.clone(),
+                    uniform_bind_group_layout.0.clone(),
+                ],
+                shader: asset_server.load("shaders/simulation/projection/gauss_seidel.wgsl"),
+                entry_point: Some("gauss_seidel_black".into()),
+                ..default()
+            });
+
+        Self {
+            gauss_seidel_red_pipeline,
+            gauss_seidel_black_pipeline,
+            residual_pipeline: (),
+            restriction_pipeline: (),
+            prolongation_pipeline: (),
+            gauss_seidel_bind_group_layout,
+            residual_bind_group_layout: (),
+            restriction_bind_group_layout: (),
+            prolongation_bind_group_layout: (),
+        }
     }
 }
 
