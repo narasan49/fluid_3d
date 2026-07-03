@@ -16,6 +16,7 @@ use bevy::{
         render_resource::{ComputePassDescriptor, PipelineCache},
         renderer::RenderContext,
     },
+    shader::load_shader_library,
 };
 
 use crate::fluid::{
@@ -28,6 +29,10 @@ use crate::fluid::{
         divergence::{DivergenceBindGroup, DivergencePass, DivergencePipeline},
         fluid_uniform::{FluidUniformBindGroup, FluidUniformPlugin},
         initialize::{InitializeBindGroup, InitializePass, InitializePipeline},
+        projection::{
+            MultigridIterationGonfig, MultigridNumLevels, MultigridProjectionBindGroups,
+            MultigridProjectionPassPlugin, MultigridProjectionPipeline,
+        },
         update_fluid_fraction::{
             UpdateFluidFractionBindGroup, UpdateFluidFractionPass, UpdateFluidFractionPipeline,
         },
@@ -40,6 +45,8 @@ pub struct FluidSimulationPlugin;
 
 impl Plugin for FluidSimulationPlugin {
     fn build(&self, app: &mut App) {
+        load_shader_library!(app, "simulation/area_fraction.wgsl");
+
         app.add_plugins((
             FluidUniformPlugin,
             FluidComputePassPlugin::<InitializePass>::default(),
@@ -48,6 +55,7 @@ impl Plugin for FluidSimulationPlugin {
             FluidComputePassPlugin::<AdvectVelocityPass>::default(),
             FluidComputePassPlugin::<ApplyForcesPass>::default(),
             FluidComputePassPlugin::<DivergencePass>::default(),
+            MultigridProjectionPassPlugin,
         ));
 
         let Some(render_app) = app.get_sub_app_mut(RenderApp) else {
@@ -80,6 +88,7 @@ struct SimulationBindGroups {
     advect_velocity_bind_group: &'static AdvectVelocityBindGroup,
     apply_forces_bind_group: &'static ApplyForcesBindGroup,
     divergence_bind_group: &'static DivergenceBindGroup,
+    multigrid_projection_bind_groups: &'static MultigridProjectionBindGroups,
 }
 
 fn update_simulation_state(
@@ -89,6 +98,7 @@ fn update_simulation_state(
     advect_velocity_pipeline: Res<AdvectVelocityPipeline>,
     apply_forces_pipeline: Res<ApplyForcesPipeline>,
     divergence_pipeline: Res<DivergencePipeline>,
+    multigrid_projection_pipeline: Res<MultigridProjectionPipeline>,
     pipeline_cache: Res<PipelineCache>,
     mut state: ResMut<SimulationState>,
 ) {
@@ -100,6 +110,7 @@ fn update_simulation_state(
                 && divergence_pipeline.is_ready(&pipeline_cache)
                 && update_solid_pipeline.is_ready(&pipeline_cache)
                 && update_fluid_fraction_pipeline.is_ready(&pipeline_cache)
+                && multigrid_projection_pipeline.is_ready(&pipeline_cache)
             {
                 *state = SimulationState::Init;
             }
@@ -113,7 +124,12 @@ fn update_simulation_state(
 
 fn run_simulation(
     mut render_context: RenderContext,
-    query: Query<(&Fluid3d, SimulationBindGroups)>,
+    query: Query<(
+        &Fluid3d,
+        SimulationBindGroups,
+        &MultigridIterationGonfig,
+        &MultigridNumLevels,
+    )>,
     pipeline_cache: Res<PipelineCache>,
     init_pipeline: Res<InitializePipeline>,
     update_solid_pipeline: Res<UpdateSolidPipeline>,
@@ -121,12 +137,13 @@ fn run_simulation(
     advect_velocity_pipeline: Res<AdvectVelocityPipeline>,
     apply_forces_pipeline: Res<ApplyForcesPipeline>,
     divergence_pipeline: Res<DivergencePipeline>,
+    projection_pipeline: Res<MultigridProjectionPipeline>,
     state: ResMut<SimulationState>,
 ) {
     match *state {
         SimulationState::Loading => {}
         SimulationState::Init => {
-            for (fluid, bind_groups) in &query {
+            for (fluid, bind_groups, _, _) in &query {
                 let mut pass =
                     render_context
                         .command_encoder()
@@ -145,7 +162,7 @@ fn run_simulation(
             }
         }
         SimulationState::Update => {
-            for (fluid, bind_groups) in &query {
+            for (fluid, bind_groups, multigrid_config, multigrid_levels) in &query {
                 let mut pass =
                     render_context
                         .command_encoder()
@@ -194,6 +211,17 @@ fn run_simulation(
                     &mut pass,
                     &bind_groups.divergence_bind_group,
                     &bind_groups.fluid_uniform_bind_group,
+                    fluid.resolution,
+                    WORKGROUP_SIZE,
+                );
+
+                projection_pipeline.dispatch(
+                    &pipeline_cache,
+                    &mut pass,
+                    &bind_groups.multigrid_projection_bind_groups,
+                    &bind_groups.fluid_uniform_bind_group,
+                    multigrid_config,
+                    multigrid_levels.0,
                     fluid.resolution,
                     WORKGROUP_SIZE,
                 );

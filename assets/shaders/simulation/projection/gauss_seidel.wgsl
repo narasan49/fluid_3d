@@ -1,9 +1,10 @@
+#import fluid3d::area_fraction::{load_area_fraction, fully_solid}
 #import fluid3d::fluid_uniform::FluidUniform
 
 @group(0) @binding(0) var div: texture_storage_3d<r32float, read>;
 @group(0) @binding(1) var levelset_air0: texture_storage_3d<r32float, read>;
 @group(0) @binding(2) var fluid_fraction: texture_storage_3d<rgba16float, read>;
-@group(0) @binding(3) var p: texture_storage_3d<r32float, read>;
+@group(0) @binding(3) var p: texture_storage_3d<r32float, read_write>;
 @group(0) @binding(4) var<uniform> dx_scale: f32;
 
 @group(1) @binding(0) var<uniform> fluid_uniform: FluidUniform;
@@ -12,7 +13,7 @@
 fn gauss_seidel_red(
     @builtin(global_invocation_id) gid: vec3u,
 ) {
-    let dim = (textureDimensions(p));
+    let dim = textureDimensions(p);
     if any(gid >= dim) {
         return;
     }
@@ -84,27 +85,4 @@ fn update_pressure(
 
     let p_new = nume / denom;
     return p_new;
-}
-
-fn load_area_fraction(
-    area_fraction: texture_storage_3d<rgba16float, read>,
-    idx: vec3i,
-) -> array<f32, 6> {
-    let fractions_minus = textureLoad(area_fraction, idx).xyz;
-    let fraction_x_plus = textureLoad(area_fraction, idx + vec3i(1, 0, 0)).x;
-    let fraction_y_plus = textureLoad(area_fraction, idx + vec3i(0, 1, 0)).y;
-    let fraction_z_plus = textureLoad(area_fraction, idx + vec3i(0, 0, 1)).z;
-
-    return array<f32, 6>(
-        fractions_minus.x,
-        fraction_x_plus,
-        fractions_minus.y,
-        fraction_y_plus,
-        fractions_minus.z,
-        fraction_z_plus,
-    );
-}
-
-fn fully_solid(fractions: array<f32, 6>) -> bool {
-    return fractions[0] == 0.0 && fractions[1] == 0.0 && fractions[2] == 0.0 && fractions[3] == 0.0 && fractions[4] == 0.0 && fractions[5] == 0.0;
 }
