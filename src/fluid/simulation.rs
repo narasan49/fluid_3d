@@ -1,9 +1,11 @@
+pub mod advect_levelset;
 pub mod advect_velocity;
 pub mod apply_forces;
 pub mod divergence;
 pub mod fluid_uniform;
 pub mod initialize;
 pub mod projection;
+pub mod solve_velocity;
 pub mod update_fluid_fraction;
 pub mod update_solid;
 
@@ -24,6 +26,7 @@ use crate::fluid::{
     compute_pass::FluidComputePassPlugin,
     pipeline::FluidPipeline,
     simulation::{
+        advect_levelset::{AdvectLevelSetBindGroup, AdvectLevelSetPass, AdvectLevelSetPipeline},
         advect_velocity::{AdvectVelocityBindGroup, AdvectVelocityPass, AdvectVelocityPipeline},
         apply_forces::{ApplyForcesBindGroup, ApplyForcesPass, ApplyForcesPipeline},
         divergence::{DivergenceBindGroup, DivergencePass, DivergencePipeline},
@@ -33,6 +36,7 @@ use crate::fluid::{
             MultigridIterationGonfig, MultigridNumLevels, MultigridProjectionBindGroups,
             MultigridProjectionPassPlugin, MultigridProjectionPipeline,
         },
+        solve_velocity::{SolveVelocityBindGroup, SolveVelocityPass, SolveVelocityPipeline},
         update_fluid_fraction::{
             UpdateFluidFractionBindGroup, UpdateFluidFractionPass, UpdateFluidFractionPipeline,
         },
@@ -56,6 +60,8 @@ impl Plugin for FluidSimulationPlugin {
             FluidComputePassPlugin::<ApplyForcesPass>::default(),
             FluidComputePassPlugin::<DivergencePass>::default(),
             MultigridProjectionPassPlugin,
+            FluidComputePassPlugin::<SolveVelocityPass>::default(),
+            FluidComputePassPlugin::<AdvectLevelSetPass>::default(),
         ));
 
         let Some(render_app) = app.get_sub_app_mut(RenderApp) else {
@@ -89,6 +95,8 @@ struct SimulationBindGroups {
     apply_forces_bind_group: &'static ApplyForcesBindGroup,
     divergence_bind_group: &'static DivergenceBindGroup,
     multigrid_projection_bind_groups: &'static MultigridProjectionBindGroups,
+    solve_velocity_bind_group: &'static SolveVelocityBindGroup,
+    advect_levelset_bind_group: &'static AdvectLevelSetBindGroup,
 }
 
 fn update_simulation_state(
@@ -99,6 +107,8 @@ fn update_simulation_state(
     apply_forces_pipeline: Res<ApplyForcesPipeline>,
     divergence_pipeline: Res<DivergencePipeline>,
     multigrid_projection_pipeline: Res<MultigridProjectionPipeline>,
+    solve_velocity_pipeline: Res<SolveVelocityPipeline>,
+    advect_levelset_pipeline: Res<AdvectLevelSetPipeline>,
     pipeline_cache: Res<PipelineCache>,
     mut state: ResMut<SimulationState>,
 ) {
@@ -111,6 +121,8 @@ fn update_simulation_state(
                 && update_solid_pipeline.is_ready(&pipeline_cache)
                 && update_fluid_fraction_pipeline.is_ready(&pipeline_cache)
                 && multigrid_projection_pipeline.is_ready(&pipeline_cache)
+                && solve_velocity_pipeline.is_ready(&pipeline_cache)
+                && advect_levelset_pipeline.is_ready(&pipeline_cache)
             {
                 *state = SimulationState::Init;
             }
@@ -138,6 +150,8 @@ fn run_simulation(
     apply_forces_pipeline: Res<ApplyForcesPipeline>,
     divergence_pipeline: Res<DivergencePipeline>,
     projection_pipeline: Res<MultigridProjectionPipeline>,
+    solve_velocity_pipeline: Res<SolveVelocityPipeline>,
+    advect_levelset_pipeline: Res<AdvectLevelSetPipeline>,
     state: ResMut<SimulationState>,
 ) {
     match *state {
@@ -222,6 +236,24 @@ fn run_simulation(
                     &bind_groups.fluid_uniform_bind_group,
                     multigrid_config,
                     multigrid_levels.0,
+                    fluid.resolution,
+                    WORKGROUP_SIZE,
+                );
+
+                solve_velocity_pipeline.dispatch(
+                    &pipeline_cache,
+                    &mut pass,
+                    &bind_groups.solve_velocity_bind_group,
+                    &bind_groups.fluid_uniform_bind_group,
+                    fluid.resolution,
+                    WORKGROUP_SIZE,
+                );
+
+                advect_levelset_pipeline.dispatch(
+                    &pipeline_cache,
+                    &mut pass,
+                    &bind_groups.advect_levelset_bind_group,
+                    &bind_groups.fluid_uniform_bind_group,
                     fluid.resolution,
                     WORKGROUP_SIZE,
                 );

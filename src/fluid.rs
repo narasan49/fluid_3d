@@ -6,10 +6,11 @@ use bevy::{
 use crate::fluid::{
     resources::FluidResources,
     simulation::{
-        FluidSimulationPlugin, advect_velocity::AdvectVelocityResource,
-        apply_forces::ApplyForcesResource, divergence::DivergenceResource,
-        fluid_uniform::FluidUniform, initialize::InitializeResource,
-        projection::setup_multigrid_resources, update_fluid_fraction::UpdateFluidFractionResource,
+        FluidSimulationPlugin, advect_levelset::AdvectLevelSetResource,
+        advect_velocity::AdvectVelocityResource, apply_forces::ApplyForcesResource,
+        divergence::DivergenceResource, fluid_uniform::FluidUniform,
+        initialize::InitializeResource, projection::setup_multigrid_resources,
+        solve_velocity::SolveVelocityResource, update_fluid_fraction::UpdateFluidFractionResource,
         update_solid::UpdateSolidResource,
     },
 };
@@ -69,6 +70,9 @@ fn setup_fluid_component(
             fluid3d.resolution,
         );
 
+        let solve_velocity_resource = SolveVelocityResource::new(&resources);
+        let advect_levelset_resource = AdvectLevelSetResource::new(&resources);
+
         commands.entity(entity).insert((
             fluid_uniform,
             resources,
@@ -78,6 +82,8 @@ fn setup_fluid_component(
             advect_velocity_resource,
             apply_forces_resource,
             divergence_resource,
+            solve_velocity_resource,
+            advect_levelset_resource,
         ));
     }
 }
