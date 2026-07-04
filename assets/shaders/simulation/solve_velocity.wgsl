@@ -43,6 +43,6 @@ fn solve_velocity(
         du.z = factor * (p_zplus - p_zminus);
     }
 
-    let u = textureLoad(u1, dim).xyz;
+    let u = textureLoad(u1, gid).xyz;
     textureStore(u0, gid, vec4f(u - du, 0.0));
 }
