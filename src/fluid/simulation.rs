@@ -5,6 +5,7 @@ pub mod divergence;
 pub mod fluid_uniform;
 pub mod initialize;
 pub mod projection;
+pub mod reinitialize_levelset;
 pub mod solve_velocity;
 pub mod update_fluid_fraction;
 pub mod update_solid;
@@ -36,6 +37,12 @@ use crate::fluid::{
             MultigridIterationGonfig, MultigridNumLevels, MultigridProjectionBindGroups,
             MultigridProjectionPassPlugin, MultigridProjectionPipeline,
         },
+        reinitialize_levelset::{
+            FastIterativeMethodInitializeActiveLabelsPipeline,
+            FastIterativeMethodInitializePipeline, FastIterativeMethodUpdatePipeline,
+            ReinitializeLevelSetBindGroups, ReinitializeLevelSetPlugin,
+            reinitialize_levelset_dispatch,
+        },
         solve_velocity::{SolveVelocityBindGroup, SolveVelocityPass, SolveVelocityPipeline},
         update_fluid_fraction::{
             UpdateFluidFractionBindGroup, UpdateFluidFractionPass, UpdateFluidFractionPipeline,
@@ -62,6 +69,7 @@ impl Plugin for FluidSimulationPlugin {
             MultigridProjectionPassPlugin,
             FluidComputePassPlugin::<SolveVelocityPass>::default(),
             FluidComputePassPlugin::<AdvectLevelSetPass>::default(),
+            ReinitializeLevelSetPlugin,
         ));
 
         let Some(render_app) = app.get_sub_app_mut(RenderApp) else {
@@ -97,6 +105,7 @@ struct SimulationBindGroups {
     multigrid_projection_bind_groups: &'static MultigridProjectionBindGroups,
     solve_velocity_bind_group: &'static SolveVelocityBindGroup,
     advect_levelset_bind_group: &'static AdvectLevelSetBindGroup,
+    reinitialize_levelset_bind_groups: ReinitializeLevelSetBindGroups,
 }
 
 fn update_simulation_state(
@@ -109,6 +118,9 @@ fn update_simulation_state(
     multigrid_projection_pipeline: Res<MultigridProjectionPipeline>,
     solve_velocity_pipeline: Res<SolveVelocityPipeline>,
     advect_levelset_pipeline: Res<AdvectLevelSetPipeline>,
+    fim_init_pipeline: Res<FastIterativeMethodInitializePipeline>,
+    fim_init_labels_pipeline: Res<FastIterativeMethodInitializeActiveLabelsPipeline>,
+    fim_update_pipeline: Res<FastIterativeMethodUpdatePipeline>,
     pipeline_cache: Res<PipelineCache>,
     mut state: ResMut<SimulationState>,
 ) {
@@ -123,6 +135,9 @@ fn update_simulation_state(
                 && multigrid_projection_pipeline.is_ready(&pipeline_cache)
                 && solve_velocity_pipeline.is_ready(&pipeline_cache)
                 && advect_levelset_pipeline.is_ready(&pipeline_cache)
+                && fim_init_pipeline.is_ready(&pipeline_cache)
+                && fim_init_labels_pipeline.is_ready(&pipeline_cache)
+                && fim_update_pipeline.is_ready(&pipeline_cache)
             {
                 *state = SimulationState::Init;
             }
@@ -152,6 +167,9 @@ fn run_simulation(
     projection_pipeline: Res<MultigridProjectionPipeline>,
     solve_velocity_pipeline: Res<SolveVelocityPipeline>,
     advect_levelset_pipeline: Res<AdvectLevelSetPipeline>,
+    fim_init_pipeline: Res<FastIterativeMethodInitializePipeline>,
+    fim_init_labels_pipeline: Res<FastIterativeMethodInitializeActiveLabelsPipeline>,
+    fim_update_pipeline: Res<FastIterativeMethodUpdatePipeline>,
     state: ResMut<SimulationState>,
 ) {
     match *state {
@@ -254,6 +272,17 @@ fn run_simulation(
                     &mut pass,
                     &bind_groups.advect_levelset_bind_group,
                     &bind_groups.fluid_uniform_bind_group,
+                    fluid.resolution,
+                    WORKGROUP_SIZE,
+                );
+
+                reinitialize_levelset_dispatch(
+                    &fim_init_pipeline,
+                    &fim_init_labels_pipeline,
+                    &fim_update_pipeline,
+                    &pipeline_cache,
+                    &mut pass,
+                    &bind_groups.reinitialize_levelset_bind_groups,
                     fluid.resolution,
                     WORKGROUP_SIZE,
                 );

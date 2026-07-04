@@ -6,11 +6,20 @@ use bevy::{
 use crate::fluid::{
     resources::FluidResources,
     simulation::{
-        FluidSimulationPlugin, advect_levelset::AdvectLevelSetResource,
-        advect_velocity::AdvectVelocityResource, apply_forces::ApplyForcesResource,
-        divergence::DivergenceResource, fluid_uniform::FluidUniform,
-        initialize::InitializeResource, projection::setup_multigrid_resources,
-        solve_velocity::SolveVelocityResource, update_fluid_fraction::UpdateFluidFractionResource,
+        FluidSimulationPlugin,
+        advect_levelset::AdvectLevelSetResource,
+        advect_velocity::AdvectVelocityResource,
+        apply_forces::ApplyForcesResource,
+        divergence::DivergenceResource,
+        fluid_uniform::FluidUniform,
+        initialize::InitializeResource,
+        projection::setup_multigrid_resources,
+        reinitialize_levelset::{
+            FastIterativeMethodInitializeActiveLabelsResource,
+            FastIterativeMethodInitializeResource, FastIterativeMethodUpdateResource,
+        },
+        solve_velocity::SolveVelocityResource,
+        update_fluid_fraction::UpdateFluidFractionResource,
         update_solid::UpdateSolidResource,
     },
 };
@@ -73,6 +82,11 @@ fn setup_fluid_component(
         let solve_velocity_resource = SolveVelocityResource::new(&resources);
         let advect_levelset_resource = AdvectLevelSetResource::new(&resources);
 
+        let fim_init_resource = FastIterativeMethodInitializeResource::new(&resources);
+        let fim_init_labels_resource =
+            FastIterativeMethodInitializeActiveLabelsResource::new(&resources);
+        let fim_update_resource = FastIterativeMethodUpdateResource::new(&resources);
+
         commands.entity(entity).insert((
             fluid_uniform,
             resources,
@@ -84,6 +98,9 @@ fn setup_fluid_component(
             divergence_resource,
             solve_velocity_resource,
             advect_levelset_resource,
+            fim_init_resource,
+            fim_init_labels_resource,
+            fim_update_resource,
         ));
     }
 }

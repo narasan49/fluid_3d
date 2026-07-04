@@ -29,6 +29,9 @@ pub struct FluidResources {
     pub div: Handle<Image>,
     /// 流体の圧力
     pub p: Handle<Image>,
+    /// FastIterativeMethodによるレベルセット再初期化に利用するラベル
+    pub labels0: Handle<Image>,
+    pub labels1: Handle<Image>,
 }
 
 impl FluidResources {
@@ -47,6 +50,8 @@ impl FluidResources {
             new_texture_storage_3d(images, resolution_xyz, TextureFormat::Rgba16Float);
         let div = new_texture_storage_3d(images, resolution, TextureFormat::R32Float);
         let p = new_texture_storage_3d(images, resolution, TextureFormat::R32Float);
+        let labels0 = new_texture_storage_3d(images, resolution, TextureFormat::R8Uint);
+        let labels1 = new_texture_storage_3d(images, resolution, TextureFormat::R8Uint);
 
         Self {
             levelset_air0,
@@ -59,6 +64,8 @@ impl FluidResources {
             fluid_fraction,
             div,
             p,
+            labels0,
+            labels1,
         }
     }
 }
