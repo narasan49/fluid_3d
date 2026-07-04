@@ -42,7 +42,7 @@ fn gauss_seidel_black(
 fn update_pressure(
     idx: vec3i,
 ) -> f32 {
-    let level_air_ij = textureLoad(p, idx).x;
+    let level_air_ij = textureLoad(levelset_air0, idx).x;
     if level_air_ij >= 0.0 {
         return 0.0;
     }
