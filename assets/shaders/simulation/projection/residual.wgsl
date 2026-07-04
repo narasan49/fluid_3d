@@ -56,4 +56,6 @@ fn residual(
             }
         }
     }
+
+    textureStore(r, idx, vec4f(residual, 0.0, 0.0, 0.0));
 }
