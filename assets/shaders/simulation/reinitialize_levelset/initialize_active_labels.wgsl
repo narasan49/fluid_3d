@@ -28,6 +28,7 @@ fn initialize_active_labels(
     let label = textureLoad(labels0, idx).x;
     if label == LABEL_SOURCE {
         textureStore(labels1, idx, vec4u(LABEL_SOURCE, 0, 0, 0));
+        return;
     }
 
     for (var i = 0; i < 6; i++) {

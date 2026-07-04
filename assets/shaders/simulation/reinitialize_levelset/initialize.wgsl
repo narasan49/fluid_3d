@@ -31,7 +31,7 @@ fn initialize(
     for (var i = 0; i < 6; i++) {
         let neighbor = idx + neighbor_offsets[i];
         if all(neighbor >= vec3i(0)) && all(neighbor < dim) {
-            let level_neighbor = textureLoad(levelset_air1, idx).x;
+            let level_neighbor = textureLoad(levelset_air1, neighbor).x;
             if (level * level_neighbor) <= 0.0 {
                 textureStore(levelset_air0, idx, vec4f(level, 0.0, 0.0, 0.0));
                 textureStore(labels0, idx, vec4u(LABEL_SOURCE, 0, 0, 0));
