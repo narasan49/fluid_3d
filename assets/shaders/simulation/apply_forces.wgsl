@@ -14,6 +14,12 @@ fn apply_forces(
         return;
     }
 
+    let level = textureLoad(levelset_air0, gid).x;
+    if level >= 0.0 {
+        textureStore(u1, gid, vec4f(0.0));
+        return;
+    }
+
     let delta = fluid_uniform.gravity * fluid_uniform.dt / fluid_uniform.dx;
     let velocity = textureLoad(u1, gid).xyz;
     textureStore(u1, gid, vec4f(velocity + delta, 0.0));
