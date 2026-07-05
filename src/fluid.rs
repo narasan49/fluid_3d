@@ -11,6 +11,7 @@ use crate::fluid::{
         advect_velocity::AdvectVelocityResource,
         apply_forces::ApplyForcesResource,
         divergence::DivergenceResource,
+        extrapolate_velocity::ExtrapolateVelocityResource,
         fluid_uniform::FluidUniform,
         initialize::InitializeResource,
         projection::setup_multigrid_resources,
@@ -88,6 +89,7 @@ fn setup_fluid_component(
             FastIterativeMethodInitializeActiveLabelsResource::new(&resources);
         let fim_update_resource = FastIterativeMethodUpdateResource::new(&resources);
         let update_grad_levelset_resource = UpdateGradLevelSetResource::new(&resources);
+        let extrapolate_velocity_resource = ExtrapolateVelocityResource::new(&resources);
 
         commands.entity(entity).insert((
             fluid_uniform,
@@ -104,6 +106,7 @@ fn setup_fluid_component(
             fim_init_labels_resource,
             fim_update_resource,
             update_grad_levelset_resource,
+            extrapolate_velocity_resource,
         ));
     }
 }

@@ -32,6 +32,8 @@ pub struct FluidResources {
     /// FastIterativeMethodによるレベルセット再初期化に利用するラベル
     pub labels0: Handle<Image>,
     pub labels1: Handle<Image>,
+    /// ExtrapolateVeocityで利用するラベル
+    pub velocity_fixed: [Handle<Image>; 2],
 }
 
 impl FluidResources {
@@ -52,6 +54,10 @@ impl FluidResources {
         let p = new_texture_storage_3d(images, resolution, TextureFormat::R32Float);
         let labels0 = new_texture_storage_3d(images, resolution, TextureFormat::R8Uint);
         let labels1 = new_texture_storage_3d(images, resolution, TextureFormat::R8Uint);
+        let velocity_fixed = [
+            new_texture_storage_3d(images, resolution, TextureFormat::R8Uint),
+            new_texture_storage_3d(images, resolution, TextureFormat::R8Uint),
+        ];
 
         Self {
             levelset_air0,
@@ -66,6 +72,7 @@ impl FluidResources {
             p,
             labels0,
             labels1,
+            velocity_fixed,
         }
     }
 }

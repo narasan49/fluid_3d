@@ -2,6 +2,7 @@ pub mod advect_levelset;
 pub mod advect_velocity;
 pub mod apply_forces;
 pub mod divergence;
+pub mod extrapolate_velocity;
 pub mod fluid_uniform;
 pub mod initialize;
 pub mod projection;
@@ -32,6 +33,9 @@ use crate::fluid::{
         advect_velocity::{AdvectVelocityBindGroup, AdvectVelocityPass, AdvectVelocityPipeline},
         apply_forces::{ApplyForcesBindGroup, ApplyForcesPass, ApplyForcesPipeline},
         divergence::{DivergenceBindGroup, DivergencePass, DivergencePipeline},
+        extrapolate_velocity::{
+            ExtrapolateVelocityBindGroups, ExtrapolateVelocityPipeline, ExtrapolateVelocityPlugin,
+        },
         fluid_uniform::{FluidUniformBindGroup, FluidUniformPlugin},
         initialize::{InitializeBindGroup, InitializePass, InitializePipeline},
         projection::{
@@ -75,6 +79,7 @@ impl Plugin for FluidSimulationPlugin {
             FluidComputePassPlugin::<AdvectLevelSetPass>::default(),
             ReinitializeLevelSetPlugin,
             FluidComputePassPlugin::<UpdateGradLevelSetPass>::default(),
+            ExtrapolateVelocityPlugin,
         ));
 
         let Some(render_app) = app.get_sub_app_mut(RenderApp) else {
@@ -112,6 +117,7 @@ struct SimulationBindGroups {
     advect_levelset_bind_group: &'static AdvectLevelSetBindGroup,
     reinitialize_levelset_bind_groups: ReinitializeLevelSetBindGroups,
     update_grad_levelset_bind_group: &'static UpdateGradLevelSetBindGroup,
+    extrapolate_velocity_bind_groups: &'static ExtrapolateVelocityBindGroups,
 }
 
 #[derive(SystemParam)]
@@ -129,6 +135,7 @@ struct FluidPipelines<'w> {
     fim_init_labels_pipeline: Res<'w, FastIterativeMethodInitializeActiveLabelsPipeline>,
     fim_update_pipeline: Res<'w, FastIterativeMethodUpdatePipeline>,
     update_grad_levelset_pipeline: Res<'w, UpdateGradLevelSetPipeline>,
+    extrapolate_velocity_pipeline: Res<'w, ExtrapolateVelocityPipeline>,
 }
 
 fn update_simulation_state(
@@ -156,6 +163,9 @@ fn update_simulation_state(
                 && pipelines.fim_update_pipeline.is_ready(&pipeline_cache)
                 && pipelines
                     .update_grad_levelset_pipeline
+                    .is_ready(&pipeline_cache)
+                && pipelines
+                    .extrapolate_velocity_pipeline
                     .is_ready(&pipeline_cache)
             {
                 *state = SimulationState::Init;
@@ -271,6 +281,14 @@ fn run_simulation(
                     &mut pass,
                     &bind_groups.solve_velocity_bind_group,
                     &bind_groups.fluid_uniform_bind_group,
+                    fluid.resolution,
+                    WORKGROUP_SIZE,
+                );
+
+                pipelines.extrapolate_velocity_pipeline.dispatch(
+                    &mut pass,
+                    &pipeline_cache,
+                    bind_groups.extrapolate_velocity_bind_groups,
                     fluid.resolution,
                     WORKGROUP_SIZE,
                 );
