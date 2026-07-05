@@ -26,20 +26,21 @@ fn solve_velocity(
     let factor = fluid_uniform.dt / (2.0 * fluid_uniform.dx * fluid_uniform.rho);
 
     var du = vec3f(0.0);
+    let p_center = textureLoad(p, gid).x;
     if gid.x > 0 && gid.x < (dim.x - 1) {
-        let p_xplus = textureLoad(p, gid + vec3u(1, 0, 0)).x;
-        let p_xminus = textureLoad(p, gid - vec3u(1, 0, 0)).x;
+        let p_xplus = (1.0 - f[1]) * p_center + f[1] * textureLoad(p, gid + vec3u(1, 0, 0)).x;
+        let p_xminus = (1.0 - f[0]) * p_center + f[0] * textureLoad(p, gid - vec3u(1, 0, 0)).x;
         
         du.x = factor * (p_xplus - p_xminus);
     }
     if gid.y > 0 && gid.y < (dim.y - 1) {
-        let p_yplus = textureLoad(p, gid + vec3u(1, 0, 0)).x;
-        let p_yminus = textureLoad(p, gid - vec3u(1, 0, 0)).x;
+        let p_yplus = (1.0 - f[3]) * p_center + f[3] * textureLoad(p, gid + vec3u(0, 1, 0)).x;
+        let p_yminus = (1.0 - f[2]) * p_center + f[2] * textureLoad(p, gid - vec3u(0, 1, 0)).x;
         du.y = factor * (p_yplus - p_yminus);
     }
     if gid.z > 0 && gid.z < (dim.z - 1) {
-        let p_zplus = textureLoad(p, gid + vec3u(1, 0, 0)).x;
-        let p_zminus = textureLoad(p, gid - vec3u(1, 0, 0)).x;
+        let p_zplus = (1.0 - f[5]) * p_center + f[5] * textureLoad(p, gid + vec3u(0, 0, 1)).x;
+        let p_zminus = (1.0 - f[4]) * p_center + f[4] * textureLoad(p, gid - vec3u(0, 0, 1)).x;
         du.z = factor * (p_zplus - p_zminus);
     }
 
