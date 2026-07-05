@@ -8,11 +8,12 @@ pub mod projection;
 pub mod reinitialize_levelset;
 pub mod solve_velocity;
 pub mod update_fluid_fraction;
+pub mod update_grad_levelset;
 pub mod update_solid;
 
 use bevy::{
     core_pipeline::schedule::camera_driver,
-    ecs::query::QueryData,
+    ecs::{query::QueryData, system::SystemParam},
     prelude::*,
     render::{
         Render, RenderApp, RenderSystems,
@@ -47,6 +48,9 @@ use crate::fluid::{
         update_fluid_fraction::{
             UpdateFluidFractionBindGroup, UpdateFluidFractionPass, UpdateFluidFractionPipeline,
         },
+        update_grad_levelset::{
+            UpdateGradLevelSetBindGroup, UpdateGradLevelSetPass, UpdateGradLevelSetPipeline,
+        },
         update_solid::{UpdateSolidBindGroup, UpdateSolidPass, UpdateSolidPipeline},
     },
     workgroup::WORKGROUP_SIZE,
@@ -70,6 +74,7 @@ impl Plugin for FluidSimulationPlugin {
             FluidComputePassPlugin::<SolveVelocityPass>::default(),
             FluidComputePassPlugin::<AdvectLevelSetPass>::default(),
             ReinitializeLevelSetPlugin,
+            FluidComputePassPlugin::<UpdateGradLevelSetPass>::default(),
         ));
 
         let Some(render_app) = app.get_sub_app_mut(RenderApp) else {
@@ -106,38 +111,52 @@ struct SimulationBindGroups {
     solve_velocity_bind_group: &'static SolveVelocityBindGroup,
     advect_levelset_bind_group: &'static AdvectLevelSetBindGroup,
     reinitialize_levelset_bind_groups: ReinitializeLevelSetBindGroups,
+    update_grad_levelset_bind_group: &'static UpdateGradLevelSetBindGroup,
+}
+
+#[derive(SystemParam)]
+struct FluidPipelines<'w> {
+    init_pipeline: Res<'w, InitializePipeline>,
+    update_solid_pipeline: Res<'w, UpdateSolidPipeline>,
+    update_fluid_fraction_pipeline: Res<'w, UpdateFluidFractionPipeline>,
+    advect_velocity_pipeline: Res<'w, AdvectVelocityPipeline>,
+    apply_forces_pipeline: Res<'w, ApplyForcesPipeline>,
+    divergence_pipeline: Res<'w, DivergencePipeline>,
+    multigrid_projection_pipeline: Res<'w, MultigridProjectionPipeline>,
+    solve_velocity_pipeline: Res<'w, SolveVelocityPipeline>,
+    advect_levelset_pipeline: Res<'w, AdvectLevelSetPipeline>,
+    fim_init_pipeline: Res<'w, FastIterativeMethodInitializePipeline>,
+    fim_init_labels_pipeline: Res<'w, FastIterativeMethodInitializeActiveLabelsPipeline>,
+    fim_update_pipeline: Res<'w, FastIterativeMethodUpdatePipeline>,
+    update_grad_levelset_pipeline: Res<'w, UpdateGradLevelSetPipeline>,
 }
 
 fn update_simulation_state(
-    init_pipeline: Res<InitializePipeline>,
-    update_solid_pipeline: Res<UpdateSolidPipeline>,
-    update_fluid_fraction_pipeline: Res<UpdateFluidFractionPipeline>,
-    advect_velocity_pipeline: Res<AdvectVelocityPipeline>,
-    apply_forces_pipeline: Res<ApplyForcesPipeline>,
-    divergence_pipeline: Res<DivergencePipeline>,
-    multigrid_projection_pipeline: Res<MultigridProjectionPipeline>,
-    solve_velocity_pipeline: Res<SolveVelocityPipeline>,
-    advect_levelset_pipeline: Res<AdvectLevelSetPipeline>,
-    fim_init_pipeline: Res<FastIterativeMethodInitializePipeline>,
-    fim_init_labels_pipeline: Res<FastIterativeMethodInitializeActiveLabelsPipeline>,
-    fim_update_pipeline: Res<FastIterativeMethodUpdatePipeline>,
+    pipelines: FluidPipelines,
     pipeline_cache: Res<PipelineCache>,
     mut state: ResMut<SimulationState>,
 ) {
     match *state {
         SimulationState::Loading => {
-            if init_pipeline.is_ready(&pipeline_cache)
-                && advect_velocity_pipeline.is_ready(&pipeline_cache)
-                && apply_forces_pipeline.is_ready(&pipeline_cache)
-                && divergence_pipeline.is_ready(&pipeline_cache)
-                && update_solid_pipeline.is_ready(&pipeline_cache)
-                && update_fluid_fraction_pipeline.is_ready(&pipeline_cache)
-                && multigrid_projection_pipeline.is_ready(&pipeline_cache)
-                && solve_velocity_pipeline.is_ready(&pipeline_cache)
-                && advect_levelset_pipeline.is_ready(&pipeline_cache)
-                && fim_init_pipeline.is_ready(&pipeline_cache)
-                && fim_init_labels_pipeline.is_ready(&pipeline_cache)
-                && fim_update_pipeline.is_ready(&pipeline_cache)
+            if pipelines.init_pipeline.is_ready(&pipeline_cache)
+                && pipelines.advect_velocity_pipeline.is_ready(&pipeline_cache)
+                && pipelines.apply_forces_pipeline.is_ready(&pipeline_cache)
+                && pipelines.divergence_pipeline.is_ready(&pipeline_cache)
+                && pipelines.update_solid_pipeline.is_ready(&pipeline_cache)
+                && pipelines
+                    .update_fluid_fraction_pipeline
+                    .is_ready(&pipeline_cache)
+                && pipelines
+                    .multigrid_projection_pipeline
+                    .is_ready(&pipeline_cache)
+                && pipelines.solve_velocity_pipeline.is_ready(&pipeline_cache)
+                && pipelines.advect_levelset_pipeline.is_ready(&pipeline_cache)
+                && pipelines.fim_init_pipeline.is_ready(&pipeline_cache)
+                && pipelines.fim_init_labels_pipeline.is_ready(&pipeline_cache)
+                && pipelines.fim_update_pipeline.is_ready(&pipeline_cache)
+                && pipelines
+                    .update_grad_levelset_pipeline
+                    .is_ready(&pipeline_cache)
             {
                 *state = SimulationState::Init;
             }
@@ -158,18 +177,7 @@ fn run_simulation(
         &MultigridNumLevels,
     )>,
     pipeline_cache: Res<PipelineCache>,
-    init_pipeline: Res<InitializePipeline>,
-    update_solid_pipeline: Res<UpdateSolidPipeline>,
-    update_fluid_fraction_pipeline: Res<UpdateFluidFractionPipeline>,
-    advect_velocity_pipeline: Res<AdvectVelocityPipeline>,
-    apply_forces_pipeline: Res<ApplyForcesPipeline>,
-    divergence_pipeline: Res<DivergencePipeline>,
-    projection_pipeline: Res<MultigridProjectionPipeline>,
-    solve_velocity_pipeline: Res<SolveVelocityPipeline>,
-    advect_levelset_pipeline: Res<AdvectLevelSetPipeline>,
-    fim_init_pipeline: Res<FastIterativeMethodInitializePipeline>,
-    fim_init_labels_pipeline: Res<FastIterativeMethodInitializeActiveLabelsPipeline>,
-    fim_update_pipeline: Res<FastIterativeMethodUpdatePipeline>,
+    pipelines: FluidPipelines,
     state: ResMut<SimulationState>,
 ) {
     match *state {
@@ -184,7 +192,7 @@ fn run_simulation(
                             ..default()
                         });
                 info_once!("[once] initializing fluid");
-                init_pipeline.dispatch(
+                pipelines.init_pipeline.dispatch(
                     &pipeline_cache,
                     &mut pass,
                     bind_groups.init_bind_group,
@@ -204,7 +212,7 @@ fn run_simulation(
                         });
 
                 info_once!("[once] running fluid simulation");
-                update_solid_pipeline.dispatch(
+                pipelines.update_solid_pipeline.dispatch(
                     &pipeline_cache,
                     &mut pass,
                     &bind_groups.update_solid_bind_group,
@@ -212,7 +220,7 @@ fn run_simulation(
                     WORKGROUP_SIZE,
                 );
 
-                update_fluid_fraction_pipeline.dispatch(
+                pipelines.update_fluid_fraction_pipeline.dispatch(
                     &pipeline_cache,
                     &mut pass,
                     &bind_groups.update_fluid_fraction_bind_group,
@@ -220,7 +228,7 @@ fn run_simulation(
                     WORKGROUP_SIZE,
                 );
 
-                advect_velocity_pipeline.dispatch(
+                pipelines.advect_velocity_pipeline.dispatch(
                     &pipeline_cache,
                     &mut pass,
                     &bind_groups.advect_velocity_bind_group,
@@ -229,7 +237,7 @@ fn run_simulation(
                     WORKGROUP_SIZE,
                 );
 
-                apply_forces_pipeline.dispatch(
+                pipelines.apply_forces_pipeline.dispatch(
                     &pipeline_cache,
                     &mut pass,
                     &bind_groups.apply_forces_bind_group,
@@ -238,7 +246,7 @@ fn run_simulation(
                     WORKGROUP_SIZE,
                 );
 
-                divergence_pipeline.dispatch(
+                pipelines.divergence_pipeline.dispatch(
                     &pipeline_cache,
                     &mut pass,
                     &bind_groups.divergence_bind_group,
@@ -247,7 +255,7 @@ fn run_simulation(
                     WORKGROUP_SIZE,
                 );
 
-                projection_pipeline.dispatch(
+                pipelines.multigrid_projection_pipeline.dispatch(
                     &pipeline_cache,
                     &mut pass,
                     &bind_groups.multigrid_projection_bind_groups,
@@ -258,7 +266,7 @@ fn run_simulation(
                     WORKGROUP_SIZE,
                 );
 
-                solve_velocity_pipeline.dispatch(
+                pipelines.solve_velocity_pipeline.dispatch(
                     &pipeline_cache,
                     &mut pass,
                     &bind_groups.solve_velocity_bind_group,
@@ -267,7 +275,7 @@ fn run_simulation(
                     WORKGROUP_SIZE,
                 );
 
-                advect_levelset_pipeline.dispatch(
+                pipelines.advect_levelset_pipeline.dispatch(
                     &pipeline_cache,
                     &mut pass,
                     &bind_groups.advect_levelset_bind_group,
@@ -277,12 +285,21 @@ fn run_simulation(
                 );
 
                 reinitialize_levelset_dispatch(
-                    &fim_init_pipeline,
-                    &fim_init_labels_pipeline,
-                    &fim_update_pipeline,
+                    &pipelines.fim_init_pipeline,
+                    &pipelines.fim_init_labels_pipeline,
+                    &pipelines.fim_update_pipeline,
                     &pipeline_cache,
                     &mut pass,
                     &bind_groups.reinitialize_levelset_bind_groups,
+                    fluid.resolution,
+                    WORKGROUP_SIZE,
+                );
+
+                pipelines.update_grad_levelset_pipeline.dispatch(
+                    &pipeline_cache,
+                    &mut pass,
+                    &bind_groups.update_grad_levelset_bind_group,
+                    &bind_groups.fluid_uniform_bind_group,
                     fluid.resolution,
                     WORKGROUP_SIZE,
                 );

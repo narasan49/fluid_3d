@@ -20,6 +20,7 @@ use crate::fluid::{
         },
         solve_velocity::SolveVelocityResource,
         update_fluid_fraction::UpdateFluidFractionResource,
+        update_grad_levelset::UpdateGradLevelSetResource,
         update_solid::UpdateSolidResource,
     },
 };
@@ -86,6 +87,7 @@ fn setup_fluid_component(
         let fim_init_labels_resource =
             FastIterativeMethodInitializeActiveLabelsResource::new(&resources);
         let fim_update_resource = FastIterativeMethodUpdateResource::new(&resources);
+        let update_grad_levelset_resource = UpdateGradLevelSetResource::new(&resources);
 
         commands.entity(entity).insert((
             fluid_uniform,
@@ -101,6 +103,7 @@ fn setup_fluid_component(
             fim_init_resource,
             fim_init_labels_resource,
             fim_update_resource,
+            update_grad_levelset_resource,
         ));
     }
 }
