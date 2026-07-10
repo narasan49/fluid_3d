@@ -26,20 +26,14 @@ fn solve_velocity(
         textureStore(u0, gid, vec4f(0.0));
         return;
     }
+    let factor = fluid_uniform.dt / (2.0 * fluid_uniform.dx * fluid_uniform.rho);
+
     let f_minus = textureLoad(fluid_fraction, gid).xyz;
     let f_plus = vec3f(
         textureLoad(fluid_fraction, gid + X).x,
         textureLoad(fluid_fraction, gid + Y).y,
         textureLoad(fluid_fraction, gid + Z).z,
     );
-    if all(f_minus == vec3f(0.0)) && all(f_plus == vec3f(0.0)) {
-        textureStore(u0, gid, textureLoad(u_solid, gid));
-        return;
-    }
-
-    let factor = fluid_uniform.dt / (2.0 * fluid_uniform.dx * fluid_uniform.rho);
-
-    var du = vec3f(0.0);
     let p_center = textureLoad(p, gid).x;
     let p_minus = vec3f(
         textureLoad(p, gid - X).x,
@@ -61,24 +55,45 @@ fn solve_velocity(
         textureLoad(levelset_air0, gid + Y).x,
         textureLoad(levelset_air0, gid + Z).x,
     );
+    let u = textureLoad(u1, gid).xyz;
+    var du = vec3f(0.0);
+    var new_u = u;
     if gid.x > 0 && gid.x < (dim.x - 1) {
-        let px_plus = adjacent_pressure(level_center, level_plus.x, p_center, p_plus.x, f_plus.x);
-        let px_minus = adjacent_pressure(level_center, level_minus.x, p_center, p_minus.x, f_minus.x);
-        du.x = factor * (px_plus - px_minus);
+        if f_plus.x == 0.0 {
+            new_u.x = textureLoad(u_solid, gid + X).x;
+        } else if f_minus.x == 0.0 {
+            new_u.x = textureLoad(u_solid, gid - X).x;
+        } else {
+            let px_plus = adjacent_pressure(level_center, level_plus.x, p_center, p_plus.x, f_plus.x);
+            let px_minus = adjacent_pressure(level_center, level_minus.x, p_center, p_minus.x, f_minus.x);
+            du.x = factor * (px_plus - px_minus);
+        }
     }
     if gid.y > 0 && gid.y < (dim.y - 1) {
-        let py_plus = adjacent_pressure(level_center, level_plus.y, p_center, p_plus.y, f_plus.y);
-        let py_minus = adjacent_pressure(level_center, level_minus.y, p_center, p_minus.y, f_minus.y);
-        du.y = factor * (py_plus - py_minus);
+        if f_plus.y == 0.0 {
+            new_u.y = textureLoad(u_solid, gid + Y).x;
+        } else if f_minus.y == 0.0 {
+            new_u.y = textureLoad(u_solid, gid - Y).x;
+        } else {
+            let py_plus = adjacent_pressure(level_center, level_plus.y, p_center, p_plus.y, f_plus.y);
+            let py_minus = adjacent_pressure(level_center, level_minus.y, p_center, p_minus.y, f_minus.y);
+            du.y = factor * (py_plus - py_minus);
+        }
     }
     if gid.z > 0 && gid.z < (dim.z - 1) {
-        let pz_plus = adjacent_pressure(level_center, level_plus.z, p_center, p_plus.z, f_plus.z);
-        let pz_minus = adjacent_pressure(level_center, level_minus.z, p_center, p_minus.z, f_minus.z);
-        du.z = factor * (pz_plus - pz_minus);
+        if f_plus.z == 0.0 {
+            new_u.z = textureLoad(u_solid, gid + Z).x;
+        }
+        if f_minus.z == 0.0 {
+            new_u.z = textureLoad(u_solid, gid - Z).x;
+        } else {
+            let pz_plus = adjacent_pressure(level_center, level_plus.z, p_center, p_plus.z, f_plus.z);
+            let pz_minus = adjacent_pressure(level_center, level_minus.z, p_center, p_minus.z, f_minus.z);
+            du.z = factor * (pz_plus - pz_minus);
+        }
     }
-
-    let u = textureLoad(u1, gid).xyz;
-    textureStore(u0, gid, vec4f(u - du, 0.0));
+    new_u -= du;
+    textureStore(u0, gid, vec4f(new_u, 0.0));
 }
 
 fn adjacent_pressure(level: f32, level_adj: f32, p: f32, p_adj: f32, f:f32) -> f32 {
