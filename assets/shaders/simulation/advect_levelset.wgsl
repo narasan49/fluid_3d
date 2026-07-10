@@ -15,12 +15,19 @@ fn advect_levelset(
         return;
     }
 
-    let backtraced_x = backtrace(u0, gid, fluid_uniform.dt);
-    if is_inside(backtraced_x, vec3f(dim)) {
-        let backtraced_level = trilinear(levelset_air0, backtraced_x);
-        textureStore(levelset_air1, gid, vec4f(backtraced_level, 0.0, 0.0, 0.0));
-    } else {
-        textureStore(levelset_air1, gid, vec4f(0.0));
+    var backtraced_x = backtrace(u0, gid, fluid_uniform.dt);
+    backtraced_x = clamp(backtraced_x, vec3f(0.0), vec3f(dim) - vec3f(1.0));
+    var new_level = trilinear(levelset_air0, backtraced_x);
+    
+    // インターフェース付近は精度よくもう一度補間する
+    if abs(new_level) < 3.0 {
+        let base = floor(backtraced_x);
+        let t = backtraced_x - base;
+        new_level = cubic_xyz(levelset_air0, vec3i(base), t);
+    }
+
+    if abs(new_level) < 100.0 {
+        textureStore(levelset_air1, gid, vec4f(new_level, 0.0, 0.0, 0.0));
     }
 }
 
@@ -90,4 +97,65 @@ fn trilinear_rgba16float(
         mix(mix(y[4], y[5], fract.x), mix(y[6], y[7], fract.x), fract.y),
         fract.z
     );
+}
+
+// cutmull-romによるcubic補間
+fn cubic(y: vec4f, t: f32) -> f32 {
+    let dydx1 = 0.5 * (y.z - y.x);
+    let dydx2 = 0.5 * (y.w - y.y);
+    let dydx3 = y.z - y.y;
+
+    let a = vec4f(
+        y.y,
+        dydx1,
+        -2.0 * dydx1 - dydx2 + 3.0 * dydx3,
+        dydx1 + dydx2 - 2.0 * dydx3,
+    );
+
+    return a.x + a.y * t + a.z * t * t + a.w * t * t * t;
+}
+
+fn cubic_x(
+    tex: texture_storage_3d<r32float, read>,
+    base_idx: vec3i,
+    t: f32,
+) -> f32 {
+    let y = vec4f(
+        textureLoad(tex, base_idx - vec3i(1, 0, 0)).x,
+        textureLoad(tex, base_idx).x,
+        textureLoad(tex, base_idx + vec3i(1, 0, 0)).x,
+        textureLoad(tex, base_idx + vec3i(2, 0, 0)).x,
+    );
+
+    return cubic(y, t);
+}
+
+fn cubic_xy(
+    tex: texture_storage_3d<r32float, read>,
+    base_idx: vec3i,
+    t: vec2f,
+) -> f32 {
+    let y = vec4f(
+        cubic_x(tex, base_idx - vec3i(0, 1, 0), t.x),
+        cubic_x(tex, base_idx, t.x),
+        cubic_x(tex, base_idx + vec3i(0, 1, 0), t.x),
+        cubic_x(tex, base_idx + vec3i(0, 2, 0), t.x),
+    );
+
+    return cubic(y, t.y);
+}
+
+fn cubic_xyz(
+    tex: texture_storage_3d<r32float, read>,
+    base_idx: vec3i,
+    t: vec3f,
+) -> f32 {
+    let y = vec4f(
+        cubic_xy(tex, base_idx - vec3i(0, 0, 1), t.xy),
+        cubic_xy(tex, base_idx, t.xy),
+        cubic_xy(tex, base_idx + vec3i(0, 0, 1), t.xy),
+        cubic_xy(tex, base_idx + vec3i(0, 0, 2), t.xy),
+    );
+
+    return cubic(y, t.z);
 }
