@@ -32,6 +32,8 @@ pub struct ApplyForcesResource {
     pub u1: Handle<Image>,
     #[storage_texture(1, image_format = R32Float, dimension = "3d", access = ReadOnly)]
     pub levelset_air0: Handle<Image>,
+    #[storage_texture(2, image_format = Rgba16Float, dimension = "3d", access = ReadOnly)]
+    pub fluid_fraction: Handle<Image>,
 }
 
 impl ApplyForcesResource {
@@ -39,6 +41,7 @@ impl ApplyForcesResource {
         Self {
             u1: resources.u1.clone(),
             levelset_air0: resources.levelset_air0.clone(),
+            fluid_fraction: resources.fluid_fraction.clone(),
         }
     }
 }
