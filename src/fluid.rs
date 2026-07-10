@@ -5,7 +5,25 @@ use bevy::{
 
 use crate::fluid::{
     resources::FluidResources,
-    simulation::{FluidSimulationPlugin, initialize::InitializeResource},
+    simulation::{
+        FluidSimulationPlugin,
+        advect_levelset::AdvectLevelSetResource,
+        advect_velocity::AdvectVelocityResource,
+        apply_forces::ApplyForcesResource,
+        divergence::DivergenceResource,
+        extrapolate_velocity::ExtrapolateVelocityResource,
+        fluid_uniform::FluidUniform,
+        initialize::InitializeResource,
+        projection::setup_multigrid_resources,
+        reinitialize_levelset::{
+            FastIterativeMethodInitializeActiveLabelsResource,
+            FastIterativeMethodInitializeResource, FastIterativeMethodUpdateResource,
+        },
+        solve_velocity::SolveVelocityResource,
+        update_fluid_fraction::UpdateFluidFractionResource,
+        update_grad_levelset::UpdateGradLevelSetResource,
+        update_solid::UpdateSolidResource,
+    },
 };
 
 pub mod compute_pass;
@@ -25,6 +43,7 @@ impl Plugin for Fluid3dPlugin {
 }
 
 #[derive(Component, ExtractComponent, Clone)]
+#[require(Transform)]
 pub struct Fluid3d {
     pub resolution: UVec3,
     pub rho: f32,
@@ -33,14 +52,61 @@ pub struct Fluid3d {
 
 fn setup_fluid_component(
     mut commands: Commands,
-    query: Query<(Entity, &Fluid3d), Added<Fluid3d>>,
+    query: Query<(Entity, &Fluid3d, &Transform), Added<Fluid3d>>,
     mut images: ResMut<Assets<Image>>,
 ) {
-    for (entity, fluid3d) in &query {
+    for (entity, fluid3d, transform) in &query {
         let resources = FluidResources::new(&mut images, fluid3d.resolution);
-
+        let fluid_uniform = FluidUniform {
+            dx: 1.0,
+            dt: 0.0,
+            rho: fluid3d.rho,
+            resolution: fluid3d.resolution,
+            gravity: fluid3d.gravity,
+            transform: transform.to_matrix(),
+        };
         let init_resource = InitializeResource::new(&resources);
 
-        commands.entity(entity).insert((resources, init_resource));
+        let update_solid_resource = UpdateSolidResource::new(&resources);
+        let update_fluid_fraction_resource = UpdateFluidFractionResource::new(&resources);
+        let advect_velocity_resource = AdvectVelocityResource::new(&resources);
+        let apply_forces_resource = ApplyForcesResource::new(&resources);
+        let divergence_resource = DivergenceResource::new(&resources);
+
+        setup_multigrid_resources(
+            &mut commands,
+            &mut images,
+            entity,
+            &resources,
+            fluid3d.resolution,
+        );
+
+        let solve_velocity_resource = SolveVelocityResource::new(&resources);
+        let advect_levelset_resource = AdvectLevelSetResource::new(&resources);
+
+        let fim_init_resource = FastIterativeMethodInitializeResource::new(&resources);
+        let fim_init_labels_resource =
+            FastIterativeMethodInitializeActiveLabelsResource::new(&resources);
+        let fim_update_resource = FastIterativeMethodUpdateResource::new(&resources);
+        let update_grad_levelset_resource = UpdateGradLevelSetResource::new(&resources);
+        let extrapolate_velocity_resource = ExtrapolateVelocityResource::new(&resources);
+
+        commands.entity(entity).insert((
+            fluid_uniform,
+            resources,
+            init_resource,
+            update_solid_resource,
+            update_fluid_fraction_resource,
+            advect_velocity_resource,
+            apply_forces_resource,
+            divergence_resource,
+            solve_velocity_resource,
+            advect_levelset_resource,
+            fim_init_resource,
+            fim_init_labels_resource,
+            fim_update_resource,
+            update_grad_levelset_resource,
+            extrapolate_velocity_resource,
+        ));
     }
 }

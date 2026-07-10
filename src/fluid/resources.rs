@@ -7,22 +7,72 @@ use bevy::{
 
 #[derive(Component)]
 pub struct FluidResources {
+    /// 流体レベルセット(SDF)。0未満が流体、0以上がそれ以外を表す。
     pub levelset_air0: Handle<Image>,
+    /// 流体レベルセットの中間バッファ
     pub levelset_air1: Handle<Image>,
+    /// 流体レベルセットの勾配
     pub grad_levelset_air: Handle<Image>,
+    /// 剛体レベルセット。0未満が剛体、0以上がそれ以外を表す。
+    pub levelset_solid: Handle<Image>,
+    /// ボクセルが流体を含むときの流体の速度
+    pub u0: Handle<Image>,
+    /// 流体速度の中間バッファ
+    pub u1: Handle<Image>,
+    /// ボクセルが固体を含むときの固体の速度
+    pub u_solid: Handle<Image>,
+    /// ボクセルの各面における、固体に対して流体が占める割合(area fraction)。
+    /// rgbチャンネルに-X, -Y, -Z面のarea fractionを格納する。
+    /// サイズは resolution + UVec3::ONE
+    pub fluid_fraction: Handle<Image>,
+    /// ボクセルの発散場
+    pub div: Handle<Image>,
+    /// 流体の圧力
+    pub p: Handle<Image>,
+    /// FastIterativeMethodによるレベルセット再初期化に利用するラベル
+    pub labels0: Handle<Image>,
+    pub labels1: Handle<Image>,
+    /// ExtrapolateVeocityで利用するラベル
+    pub velocity_fixed: [Handle<Image>; 2],
 }
 
 impl FluidResources {
     pub fn new(images: &mut Assets<Image>, resolution: UVec3) -> Self {
+        let resolution_xyz = resolution + UVec3::ONE;
         let levelset_air0 = new_texture_storage_3d(images, resolution, TextureFormat::R32Float);
         let levelset_air1 = new_texture_storage_3d(images, resolution, TextureFormat::R32Float);
         let grad_levelset_air =
             new_texture_storage_3d(images, resolution, TextureFormat::Rgba16Snorm);
+        let levelset_solid = new_texture_storage_3d(images, resolution, TextureFormat::R32Float);
+
+        let u0 = new_texture_storage_3d(images, resolution, TextureFormat::Rgba16Float);
+        let u1 = new_texture_storage_3d(images, resolution, TextureFormat::Rgba16Float);
+        let u_solid = new_texture_storage_3d(images, resolution, TextureFormat::Rgba16Float);
+        let fluid_fraction =
+            new_texture_storage_3d(images, resolution_xyz, TextureFormat::Rgba16Float);
+        let div = new_texture_storage_3d(images, resolution, TextureFormat::R32Float);
+        let p = new_texture_storage_3d(images, resolution, TextureFormat::R32Float);
+        let labels0 = new_texture_storage_3d(images, resolution, TextureFormat::R8Uint);
+        let labels1 = new_texture_storage_3d(images, resolution, TextureFormat::R8Uint);
+        let velocity_fixed = [
+            new_texture_storage_3d(images, resolution, TextureFormat::R8Uint),
+            new_texture_storage_3d(images, resolution, TextureFormat::R8Uint),
+        ];
 
         Self {
             levelset_air0,
             levelset_air1,
             grad_levelset_air,
+            levelset_solid,
+            u0,
+            u1,
+            u_solid,
+            fluid_fraction,
+            div,
+            p,
+            labels0,
+            labels1,
+            velocity_fixed,
         }
     }
 }

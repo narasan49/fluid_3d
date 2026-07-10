@@ -17,55 +17,49 @@ use crate::fluid::{
     workgroup::num_workgroups,
 };
 
-pub struct InitializePass;
+pub struct UpdateFluidFractionPass;
 
-impl FluidComputePass for InitializePass {
-    type B = InitializeBindGroup;
-    type P = InitializePipeline;
-    type R = InitializeResource;
+impl FluidComputePass for UpdateFluidFractionPass {
+    type B = UpdateFluidFractionBindGroup;
+    type P = UpdateFluidFractionPipeline;
+    type R = UpdateFluidFractionResource;
 }
 
 #[derive(Component, ExtractComponent, Clone, AsBindGroup)]
-pub struct InitializeResource {
-    #[storage_texture(0, image_format = R32Float, dimension = "3d", access = WriteOnly)]
-    pub levelset_air0: Handle<Image>,
-    #[storage_texture(1, image_format = R32Float, dimension = "3d", access = WriteOnly)]
-    pub levelset_air1: Handle<Image>,
-    #[storage_texture(2, image_format = Rgba16Snorm, dimension = "3d", access = WriteOnly)]
-    pub grad_levelset_air: Handle<Image>,
-    #[storage_texture(3, image_format = Rgba16Float, dimension = "3d", access = WriteOnly)]
-    pub u0: Handle<Image>,
+pub struct UpdateFluidFractionResource {
+    #[storage_texture(0, image_format = R32Float, dimension = "3d", access = ReadOnly)]
+    pub levelset_solid: Handle<Image>,
+    #[storage_texture(1, image_format = Rgba16Float, dimension = "3d", access = WriteOnly)]
+    pub fluid_fraction: Handle<Image>,
 }
 
-impl InitializeResource {
+impl UpdateFluidFractionResource {
     pub fn new(resources: &FluidResources) -> Self {
         Self {
-            levelset_air0: resources.levelset_air0.clone(),
-            levelset_air1: resources.levelset_air1.clone(),
-            grad_levelset_air: resources.grad_levelset_air.clone(),
-            u0: resources.u0.clone(),
+            levelset_solid: resources.levelset_solid.clone(),
+            fluid_fraction: resources.fluid_fraction.clone(),
         }
     }
 }
 
 #[derive(Resource)]
-pub struct InitializePipeline {
+pub struct UpdateFluidFractionPipeline {
     pipeline: CachedComputePipelineId,
     bind_group_layout: BindGroupLayoutDescriptor,
 }
 
-impl InitializePipeline {
+impl UpdateFluidFractionPipeline {
     pub fn dispatch(
         &self,
         pipeline_cache: &PipelineCache,
         pass: &mut ComputePass,
-        bind_group: &InitializeBindGroup,
+        bind_group: &UpdateFluidFractionBindGroup,
         resolution: UVec3,
         workgroup_size: UVec3,
     ) {
-        pass.push_debug_group("initialize");
+        pass.push_debug_group("update_fluid_fraction");
         let pipeline = pipeline_cache.get_compute_pipeline(self.pipeline).unwrap();
-        let num_wg = num_workgroups(resolution, workgroup_size);
+        let num_wg = num_workgroups(resolution + UVec3::ONE, workgroup_size);
         pass.set_pipeline(pipeline);
         pass.set_bind_group(0, &bind_group.bind_group, &[]);
         pass.dispatch_workgroups(num_wg.x, num_wg.y, num_wg.z);
@@ -74,7 +68,7 @@ impl InitializePipeline {
     }
 }
 
-impl FluidPipeline for InitializePipeline {
+impl FluidPipeline for UpdateFluidFractionPipeline {
     fn bind_group_layoput(&self) -> &BindGroupLayoutDescriptor {
         &self.bind_group_layout
     }
@@ -84,19 +78,20 @@ impl FluidPipeline for InitializePipeline {
     }
 }
 
-impl FromWorld for InitializePipeline {
+impl FromWorld for UpdateFluidFractionPipeline {
     fn from_world(world: &mut World) -> Self {
         let render_device = world.resource::<RenderDevice>();
         let pipeline_cache = world.resource::<PipelineCache>();
         let asset_server = world.resource::<AssetServer>();
 
-        let bind_group_layout = InitializeResource::bind_group_layout_descriptor(render_device);
+        let bind_group_layout =
+            UpdateFluidFractionResource::bind_group_layout_descriptor(render_device);
 
         let pipeline = pipeline_cache.queue_compute_pipeline(ComputePipelineDescriptor {
-            label: Some("initialize_pipeline".into()),
+            label: Some("update_fluid_fraction_pipeline".into()),
             layout: vec![bind_group_layout.clone()],
-            shader: asset_server.load("shaders/simulation/initialize.wgsl"),
-            entry_point: Some("initialize".into()),
+            shader: asset_server.load("shaders/simulation/update_fluid_fraction.wgsl"),
+            entry_point: Some("update_fluid_fraction".into()),
             ..default()
         });
 
@@ -108,11 +103,11 @@ impl FromWorld for InitializePipeline {
 }
 
 #[derive(Component)]
-pub struct InitializeBindGroup {
+pub struct UpdateFluidFractionBindGroup {
     bind_group: BindGroup,
 }
 
-impl From<BindGroup> for InitializeBindGroup {
+impl From<BindGroup> for UpdateFluidFractionBindGroup {
     fn from(bind_group: BindGroup) -> Self {
         Self { bind_group }
     }
