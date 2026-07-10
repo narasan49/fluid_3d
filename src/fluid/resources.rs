@@ -19,6 +19,12 @@ pub struct FluidResources {
     pub u0: Handle<Image>,
     /// 流体速度の中間バッファ
     pub u1: Handle<Image>,
+    /// MAC(Marker-And-Cell)グリッドにおける流体速度のx成分
+    pub u_mac: Handle<Image>,
+    /// MAC(Marker-And-Cell)グリッドにおける流体速度のy成分
+    pub v_mac: Handle<Image>,
+    /// MAC(Marker-And-Cell)グリッドにおける流体速度のz成分
+    pub w_mac: Handle<Image>,
     /// ボクセルが固体を含むときの固体の速度
     pub u_solid: Handle<Image>,
     /// ボクセルの各面における、固体に対して流体が占める割合(area fraction)。
@@ -47,6 +53,9 @@ impl FluidResources {
 
         let u0 = new_texture_storage_3d(images, resolution, TextureFormat::Rgba16Float);
         let u1 = new_texture_storage_3d(images, resolution, TextureFormat::Rgba16Float);
+        let u_mac = new_texture_storage_3d(images, resolution + UVec3::X, TextureFormat::R16Float);
+        let v_mac = new_texture_storage_3d(images, resolution + UVec3::Y, TextureFormat::R16Float);
+        let w_mac = new_texture_storage_3d(images, resolution + UVec3::Z, TextureFormat::R16Float);
         let u_solid = new_texture_storage_3d(images, resolution, TextureFormat::Rgba16Float);
         let fluid_fraction =
             new_texture_storage_3d(images, resolution_xyz, TextureFormat::Rgba16Float);
@@ -66,6 +75,9 @@ impl FluidResources {
             levelset_solid,
             u0,
             u1,
+            u_mac,
+            v_mac,
+            w_mac,
             u_solid,
             fluid_fraction,
             div,

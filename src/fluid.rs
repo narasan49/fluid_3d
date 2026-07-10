@@ -13,6 +13,7 @@ use crate::fluid::{
         divergence::DivergenceResource,
         extrapolate_velocity::ExtrapolateVelocityResource,
         fluid_uniform::FluidUniform,
+        grid_transition::{CollocatedToMacResource, MacToCollocatedResource},
         initialize::InitializeResource,
         projection::setup_multigrid_resources,
         reinitialize_levelset::{
@@ -71,6 +72,7 @@ fn setup_fluid_component(
         let update_fluid_fraction_resource = UpdateFluidFractionResource::new(&resources);
         let advect_velocity_resource = AdvectVelocityResource::new(&resources);
         let apply_forces_resource = ApplyForcesResource::new(&resources);
+        let collocated_to_mac_resource = CollocatedToMacResource::new(&resources);
         let divergence_resource = DivergenceResource::new(&resources);
 
         setup_multigrid_resources(
@@ -82,6 +84,7 @@ fn setup_fluid_component(
         );
 
         let solve_velocity_resource = SolveVelocityResource::new(&resources);
+        let mac_to_collocated_resource = MacToCollocatedResource::new(&resources);
         let advect_levelset_resource = AdvectLevelSetResource::new(&resources);
 
         let fim_init_resource = FastIterativeMethodInitializeResource::new(&resources);
@@ -91,22 +94,24 @@ fn setup_fluid_component(
         let update_grad_levelset_resource = UpdateGradLevelSetResource::new(&resources);
         let extrapolate_velocity_resource = ExtrapolateVelocityResource::new(&resources);
 
-        commands.entity(entity).insert((
-            fluid_uniform,
-            resources,
-            init_resource,
-            update_solid_resource,
-            update_fluid_fraction_resource,
-            advect_velocity_resource,
-            apply_forces_resource,
-            divergence_resource,
-            solve_velocity_resource,
-            advect_levelset_resource,
-            fim_init_resource,
-            fim_init_labels_resource,
-            fim_update_resource,
-            update_grad_levelset_resource,
-            extrapolate_velocity_resource,
-        ));
+        commands
+            .entity(entity)
+            .insert((fluid_uniform, resources, init_resource))
+            .insert((
+                update_solid_resource,
+                update_fluid_fraction_resource,
+                advect_velocity_resource,
+                apply_forces_resource,
+                collocated_to_mac_resource,
+                divergence_resource,
+                solve_velocity_resource,
+                mac_to_collocated_resource,
+                advect_levelset_resource,
+                fim_init_resource,
+                fim_init_labels_resource,
+                fim_update_resource,
+                update_grad_levelset_resource,
+                extrapolate_velocity_resource,
+            ));
     }
 }
