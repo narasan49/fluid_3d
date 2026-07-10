@@ -58,7 +58,7 @@ fn setup_fluid_component(
     for (entity, fluid3d, transform) in &query {
         let resources = FluidResources::new(&mut images, fluid3d.resolution);
         let fluid_uniform = FluidUniform {
-            dx: 1.0,
+            dx: 0.1,
             dt: 0.0,
             rho: fluid3d.rho,
             resolution: fluid3d.resolution,
