@@ -224,8 +224,6 @@ fn marching_cubes_draw(
 ) {
     let (target, depth, view_offset) = view.into_inner();
     let Some(pipeline) = pipeline_cache.get_render_pipeline(pipeline.pipeline) else {
-        let pipeline_state = pipeline_cache.get_render_pipeline_state(pipeline.pipeline);
-        info!("{:?}", pipeline_state);
         return;
     };
 
