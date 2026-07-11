@@ -34,8 +34,8 @@ fn apply_forces(
     let velocity = textureLoad(u1, gid).xyz;
     var new_velocity = velocity + delta;
     let cfl_speed = CFL_SCALE * fluid_uniform.dx / fluid_uniform.dt;
-    if length(new_velocity) > CFL_SCALE {
-        new_velocity = CFL_SCALE * normalize(new_velocity);
+    if length(new_velocity) > cfl_speed {
+        new_velocity = cfl_speed * normalize(new_velocity);
     }
-    textureStore(u1, gid, vec4f(velocity + delta, 0.0));
+    textureStore(u1, gid, vec4f(new_velocity, 0.0));
 }

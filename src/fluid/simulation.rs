@@ -4,6 +4,7 @@ pub mod apply_forces;
 pub mod divergence;
 pub mod extrapolate_velocity;
 pub mod fluid_uniform;
+pub mod grid_transition;
 pub mod initialize;
 pub mod projection;
 pub mod reinitialize_levelset;
@@ -37,6 +38,10 @@ use crate::fluid::{
             ExtrapolateVelocityBindGroups, ExtrapolateVelocityPipeline, ExtrapolateVelocityPlugin,
         },
         fluid_uniform::{FluidUniformBindGroup, FluidUniformPlugin},
+        grid_transition::{
+            CollocatedToMacBindGroup, CollocatedToMacPass, CollocatedToMacPipeline,
+            MacToCollocatedBindGroup, MacToCollocatedPass, MacToCollocatedPipeline,
+        },
         initialize::{InitializeBindGroup, InitializePass, InitializePipeline},
         projection::{
             MultigridIterationGonfig, MultigridNumLevels, MultigridProjectionBindGroups,
@@ -73,9 +78,11 @@ impl Plugin for FluidSimulationPlugin {
             FluidComputePassPlugin::<UpdateFluidFractionPass>::default(),
             FluidComputePassPlugin::<AdvectVelocityPass>::default(),
             FluidComputePassPlugin::<ApplyForcesPass>::default(),
+            FluidComputePassPlugin::<CollocatedToMacPass>::default(),
             FluidComputePassPlugin::<DivergencePass>::default(),
             MultigridProjectionPassPlugin,
             FluidComputePassPlugin::<SolveVelocityPass>::default(),
+            FluidComputePassPlugin::<MacToCollocatedPass>::default(),
             FluidComputePassPlugin::<AdvectLevelSetPass>::default(),
             ReinitializeLevelSetPlugin,
             FluidComputePassPlugin::<UpdateGradLevelSetPass>::default(),
@@ -111,9 +118,11 @@ struct SimulationBindGroups {
     update_fluid_fraction_bind_group: &'static UpdateFluidFractionBindGroup,
     advect_velocity_bind_group: &'static AdvectVelocityBindGroup,
     apply_forces_bind_group: &'static ApplyForcesBindGroup,
+    collocated_to_mac_bind_group: &'static CollocatedToMacBindGroup,
     divergence_bind_group: &'static DivergenceBindGroup,
     multigrid_projection_bind_groups: &'static MultigridProjectionBindGroups,
     solve_velocity_bind_group: &'static SolveVelocityBindGroup,
+    mac_to_collocated_bind_group: &'static MacToCollocatedBindGroup,
     advect_levelset_bind_group: &'static AdvectLevelSetBindGroup,
     reinitialize_levelset_bind_groups: ReinitializeLevelSetBindGroups,
     update_grad_levelset_bind_group: &'static UpdateGradLevelSetBindGroup,
@@ -127,9 +136,11 @@ struct FluidPipelines<'w> {
     update_fluid_fraction_pipeline: Res<'w, UpdateFluidFractionPipeline>,
     advect_velocity_pipeline: Res<'w, AdvectVelocityPipeline>,
     apply_forces_pipeline: Res<'w, ApplyForcesPipeline>,
+    collocated_to_mac_pipeline: Res<'w, CollocatedToMacPipeline>,
     divergence_pipeline: Res<'w, DivergencePipeline>,
     multigrid_projection_pipeline: Res<'w, MultigridProjectionPipeline>,
     solve_velocity_pipeline: Res<'w, SolveVelocityPipeline>,
+    mac_to_collocated_pipeline: Res<'w, MacToCollocatedPipeline>,
     advect_levelset_pipeline: Res<'w, AdvectLevelSetPipeline>,
     fim_init_pipeline: Res<'w, FastIterativeMethodInitializePipeline>,
     fim_init_labels_pipeline: Res<'w, FastIterativeMethodInitializeActiveLabelsPipeline>,
@@ -148,6 +159,9 @@ fn update_simulation_state(
             if pipelines.init_pipeline.is_ready(&pipeline_cache)
                 && pipelines.advect_velocity_pipeline.is_ready(&pipeline_cache)
                 && pipelines.apply_forces_pipeline.is_ready(&pipeline_cache)
+                && pipelines
+                    .collocated_to_mac_pipeline
+                    .is_ready(&pipeline_cache)
                 && pipelines.divergence_pipeline.is_ready(&pipeline_cache)
                 && pipelines.update_solid_pipeline.is_ready(&pipeline_cache)
                 && pipelines
@@ -157,6 +171,9 @@ fn update_simulation_state(
                     .multigrid_projection_pipeline
                     .is_ready(&pipeline_cache)
                 && pipelines.solve_velocity_pipeline.is_ready(&pipeline_cache)
+                && pipelines
+                    .mac_to_collocated_pipeline
+                    .is_ready(&pipeline_cache)
                 && pipelines.advect_levelset_pipeline.is_ready(&pipeline_cache)
                 && pipelines.fim_init_pipeline.is_ready(&pipeline_cache)
                 && pipelines.fim_init_labels_pipeline.is_ready(&pipeline_cache)
@@ -256,6 +273,14 @@ fn run_simulation(
                     WORKGROUP_SIZE,
                 );
 
+                pipelines.collocated_to_mac_pipeline.dispatch(
+                    &mut pass,
+                    &pipeline_cache,
+                    &bind_groups.collocated_to_mac_bind_group,
+                    fluid.resolution,
+                    WORKGROUP_SIZE,
+                );
+
                 pipelines.divergence_pipeline.dispatch(
                     &pipeline_cache,
                     &mut pass,
@@ -281,6 +306,14 @@ fn run_simulation(
                     &mut pass,
                     &bind_groups.solve_velocity_bind_group,
                     &bind_groups.fluid_uniform_bind_group,
+                    fluid.resolution,
+                    WORKGROUP_SIZE,
+                );
+
+                pipelines.mac_to_collocated_pipeline.dispatch(
+                    &mut pass,
+                    &pipeline_cache,
+                    &bind_groups.mac_to_collocated_bind_group,
                     fluid.resolution,
                     WORKGROUP_SIZE,
                 );

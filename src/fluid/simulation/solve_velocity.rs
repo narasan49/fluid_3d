@@ -28,25 +28,28 @@ impl FluidComputePass for SolveVelocityPass {
 
 #[derive(Component, ExtractComponent, Clone, AsBindGroup)]
 pub struct SolveVelocityResource {
-    #[storage_texture(0, image_format = Rgba16Float, dimension = "3d", access = WriteOnly)]
-    pub u0: Handle<Image>,
-    #[storage_texture(1, image_format = Rgba16Float, dimension = "3d", access = ReadOnly)]
-    pub u1: Handle<Image>,
-    #[storage_texture(2, image_format = R32Float, dimension = "3d", access = ReadOnly)]
+    #[storage_texture(0, image_format = R16Float, dimension = "3d", access = ReadWrite)]
+    pub u_mac: Handle<Image>,
+    #[storage_texture(1, image_format = R16Float, dimension = "3d", access = ReadWrite)]
+    pub v_mac: Handle<Image>,
+    #[storage_texture(2, image_format = R16Float, dimension = "3d", access = ReadWrite)]
+    pub w_mac: Handle<Image>,
+    #[storage_texture(3, image_format = R32Float, dimension = "3d", access = ReadOnly)]
     pub p: Handle<Image>,
-    #[storage_texture(3, image_format = Rgba16Float, dimension = "3d", access = ReadOnly)]
-    pub fluid_fraction: Handle<Image>,
     #[storage_texture(4, image_format = Rgba16Float, dimension = "3d", access = ReadOnly)]
+    pub fluid_fraction: Handle<Image>,
+    #[storage_texture(5, image_format = Rgba16Float, dimension = "3d", access = ReadOnly)]
     pub u_solid: Handle<Image>,
-    #[storage_texture(5, image_format = R32Float, dimension = "3d", access = ReadOnly)]
+    #[storage_texture(6, image_format = R32Float, dimension = "3d", access = ReadOnly)]
     pub levelset_air0: Handle<Image>,
 }
 
 impl SolveVelocityResource {
     pub fn new(resources: &FluidResources) -> Self {
         Self {
-            u0: resources.u0.clone(),
-            u1: resources.u1.clone(),
+            u_mac: resources.u_mac.clone(),
+            v_mac: resources.v_mac.clone(),
+            w_mac: resources.w_mac.clone(),
             p: resources.p.clone(),
             fluid_fraction: resources.fluid_fraction.clone(),
             u_solid: resources.u_solid.clone(),
