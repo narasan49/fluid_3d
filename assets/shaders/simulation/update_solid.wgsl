@@ -23,12 +23,12 @@ fn update_solid(
     }
 
     var level_solid = 1e6;
-    level_solid = min(level_solid, f32(gid.x) - 0.5);
-    level_solid = min(level_solid, f32(dim.x - gid.x) - 1.0 - 0.5);
-    level_solid = min(level_solid, f32(gid.y) - 0.5);
-    level_solid = min(level_solid, f32(dim.y - gid.y) - 1.0 - 0.5);
-    level_solid = min(level_solid, f32(gid.z) - 0.5);
-    level_solid = min(level_solid, f32(dim.z - gid.z) - 1.0 - 0.5);
+    level_solid = min(level_solid, f32(gid.x));
+    level_solid = min(level_solid, f32(dim.x - gid.x) - 1.0);
+    level_solid = min(level_solid, f32(gid.y));
+    level_solid = min(level_solid, f32(dim.y - gid.y) - 1.0);
+    level_solid = min(level_solid, f32(gid.z));
+    level_solid = min(level_solid, f32(dim.z - gid.z) - 1.0);
 
     textureStore(levelset_solid, gid, vec4f(level_solid, 0.0, 0.0, 0.0));
 }
