@@ -37,18 +37,23 @@ fn solve_velocity(
             var p_minus = textureLoad(p, gid - X).x;
             let level_plus = textureLoad(levelset_air0, gid).x;
             let level_minus = textureLoad(levelset_air0, gid - X).x;
-            if level_plus >= 0.0 && level_minus < 0.0 {
-                p_plus = p_minus * level_plus / (level_minus - EPSIRON);
-            } else if level_plus < 0.0 && level_minus >= 0.0 {
-                p_minus = p_plus * level_minus / (level_plus - EPSIRON);
-            }
-
-            if level_plus < 0.0 || level_minus < 0.0 {
-                let u = textureLoad(u_mac, gid).x;
-                let du = factor * (p_plus - p_minus);
-                textureStore(u_mac, gid, vec4f(u - du, 0.0, 0.0, 0.0));
-            } else {
+            let level_edge = 0.5 * (level_plus + level_minus);
+            if level_edge >= 0.0 {
                 textureStore(u_mac, gid, vec4f(0.0));
+            } else {
+                if level_plus >= 0.0 && level_minus < 0.0 {
+                    p_plus = p_minus * level_plus / level_minus;
+                } else if level_plus < 0.0 && level_minus >= 0.0 {
+                    p_minus = p_plus * level_minus / level_plus;
+                }
+
+                if level_plus < 0.0 || level_minus < 0.0 {
+                    let u = textureLoad(u_mac, gid).x;
+                    let du = factor * (p_plus - p_minus);
+                    textureStore(u_mac, gid, vec4f(u - du, 0.0, 0.0, 0.0));
+                } else {
+                    textureStore(u_mac, gid, vec4f(0.0));
+                }
             }
         }
     }
@@ -63,18 +68,23 @@ fn solve_velocity(
             var p_minus = textureLoad(p, gid - Y).x;
             let level_plus = textureLoad(levelset_air0, gid).x;
             let level_minus = textureLoad(levelset_air0, gid - Y).x;
-            if level_plus >= 0.0 && level_minus < 0.0 {
-                p_plus = p_minus * level_plus / (level_minus - EPSIRON);
-            } else if level_plus < 0.0 && level_minus >= 0.0 {
-                p_minus = p_plus * level_minus / (level_plus - EPSIRON);
-            }
-
-            if level_plus < 0.0 || level_minus < 0.0 {
-                let v = textureLoad(v_mac, gid).x;
-                let dv = factor * (p_plus - p_minus);
-                textureStore(v_mac, gid, vec4f(v - dv, 0.0, 0.0, 0.0));
-            } else {
+            let level_edge = 0.5 * (level_plus + level_minus);
+            if level_edge >= 0.0 {
                 textureStore(v_mac, gid, vec4f(0.0));
+            } else {
+                if level_plus >= 0.0 && level_minus < 0.0 {
+                    p_plus = p_minus * level_plus / level_minus;
+                } else if level_plus < 0.0 && level_minus >= 0.0 {
+                    p_minus = p_plus * level_minus / level_plus;
+                }
+
+                if level_plus < 0.0 || level_minus < 0.0 {
+                    let v = textureLoad(v_mac, gid).x;
+                    let dv = factor * (p_plus - p_minus);
+                    textureStore(v_mac, gid, vec4f(v - dv, 0.0, 0.0, 0.0));
+                } else {
+                    textureStore(v_mac, gid, vec4f(0.0));
+                }
             }
         }
     }
@@ -89,18 +99,23 @@ fn solve_velocity(
             var p_minus = textureLoad(p, gid - Z).x;
             let level_plus = textureLoad(levelset_air0, gid).x;
             let level_minus = textureLoad(levelset_air0, gid - Z).x;
-            if level_plus >= 0.0 && level_minus < 0.0 {
-                p_plus = p_minus * level_plus / (level_minus - EPSIRON);
-            } else if level_plus < 0.0 && level_minus >= 0.0 {
-                p_minus = p_plus * level_minus / (level_plus - EPSIRON);
-            }
-
-            if level_plus < 0.0 || level_minus < 0.0 {
-                let w = textureLoad(w_mac, gid).x;
-                let dw = factor * (p_plus - p_minus);
-                textureStore(w_mac, gid, vec4f(w - dw, 0.0, 0.0, 0.0));
-            } else {
+            let level_edge = 0.5 * (level_plus + level_minus);
+            if level_edge >= 0.0 {
                 textureStore(w_mac, gid, vec4f(0.0));
+            } else {
+                if level_plus >= 0.0 && level_minus < 0.0 {
+                    p_plus = p_minus * level_plus / level_minus;
+                } else if level_plus < 0.0 && level_minus >= 0.0 {
+                    p_minus = p_plus * level_minus / level_plus;
+                }
+    
+                if level_plus < 0.0 || level_minus < 0.0 {
+                    let w = textureLoad(w_mac, gid).x;
+                    let dw = factor * (p_plus - p_minus);
+                    textureStore(w_mac, gid, vec4f(w - dw, 0.0, 0.0, 0.0));
+                } else {
+                    textureStore(w_mac, gid, vec4f(0.0));
+                }
             }
         }
     }
