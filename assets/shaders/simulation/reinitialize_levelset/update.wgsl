@@ -63,34 +63,40 @@ fn solve_quadratic_3d(
     let phi_ymin = min(abs_load_levelset(levelset, idx + vec3i(0, -1, 0)), abs_load_levelset(levelset, idx + vec3i(0, 1, 0)));
     let phi_zmin = min(abs_load_levelset(levelset, idx + vec3i(0, 0, -1)), abs_load_levelset(levelset, idx + vec3i(0, 0, 1)));
 
-    var phi_sorted = vec3f(phi_xmin, phi_ymin, phi_zmin);
-    if phi_sorted.x > phi_sorted.y {
-        let tmp = phi_sorted.x;
-        phi_sorted.x = phi_sorted.y;
-        phi_sorted.y = tmp;
-    }
-    if phi_sorted.x > phi_sorted.z {
-        let tmp = phi_sorted.x;
-        phi_sorted.x = phi_sorted.z;
-        phi_sorted.z = tmp;
-    }
-    if phi_sorted.y > phi_sorted.z {
-        let tmp = phi_sorted.y;
-        phi_sorted.y = phi_sorted.z;
-        phi_sorted.z = tmp;
-    }
+    var phi_sorted = sort_vec3f(vec3f(phi_xmin, phi_ymin, phi_zmin));
 
     let d0 = phi_sorted.z - phi_sorted.x;
     let d1 = phi_sorted.y - phi_sorted.x;
     if d0 < 1.0 {
         let phi_sum = phi_sorted.x + phi_sorted.y + phi_sorted.z;
         let phi_sq_sum = dot(phi_sorted, phi_sorted);
-        return 1.0 / 6.0 * (2.0 * phi_sum + sqrt(4.0 * phi_sum * phi_sum - 12.0 * (phi_sq_sum - 1.0)));
+        return (phi_sum + sqrt(phi_sum * phi_sum - 3.0 * (phi_sq_sum - 1.0))) / 3.0;
     } else if d1 < 1.0 {
         return 0.5 * (phi_sorted.x + phi_sorted.y + sqrt(2.0 - d1 * d1));
     } else {
         return phi_sorted.x + 1.0;
     }
+}
+
+fn sort_vec3f(data: vec3f) -> vec3f {
+    var sorted = data;
+    if sorted.x > sorted.y {
+        let tmp = sorted.x;
+        sorted.x = sorted.y;
+        sorted.y = tmp;
+    }
+    if sorted.x > sorted.z {
+        let tmp = sorted.x;
+        sorted.x = sorted.z;
+        sorted.z = tmp;
+    }
+    if sorted.y > sorted.z {
+        let tmp = sorted.y;
+        sorted.y = sorted.z;
+        sorted.z = tmp;
+    }
+
+    return sorted;
 }
 
 fn abs_load_levelset(

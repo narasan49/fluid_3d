@@ -53,41 +53,41 @@ fn sdf_cube(cube: Cube, inverse_transform: mat4x4f, x: vec3f) -> f32 {
     let d = xl_abs - cube.half_size;
     let is_inside = xl_abs < cube.half_size;
 
-    if is_inside.x {
-        if is_inside.y {
-            if is_inside.z {
-                return min(d.x, min(d.y, d.z));
-            } else {
-                return d.z;
-            }
-        } else {
-            if is_inside.z {
-                return d.y;
-            } else {
-                return length(vec2f(d.y, d.z));
-            }
-        }
-    } else {
-        if is_inside.y {
-            if is_inside.z {
-                return d.x;
-            } else {
-                return length(vec2f(d.x, d.z));
-            }
-        } else {
-            if is_inside.z {
-                return length(vec2f(d.x, d.y));
-            } else {
-                return length(vec3f(d.x, d.y, d.z));
-            }
-        }
-    }
-    // 以下のようにかけそう。
-    // if all(is_inside) {
-    //     return min(d.x, min(d.y, d.z));
+    // if is_inside.x {
+    //     if is_inside.y {
+    //         if is_inside.z {
+    //             return min(d.x, min(d.y, d.z));
+    //         } else {
+    //             return d.z;
+    //         }
+    //     } else {
+    //         if is_inside.z {
+    //             return d.y;
+    //         } else {
+    //             return length(vec2f(d.y, d.z));
+    //         }
+    //     }
     // } else {
-    //     return length(select(vec3f(0), d, is_inside));
+    //     if is_inside.y {
+    //         if is_inside.z {
+    //             return d.x;
+    //         } else {
+    //             return length(vec2f(d.x, d.z));
+    //         }
+    //     } else {
+    //         if is_inside.z {
+    //             return length(vec2f(d.x, d.y));
+    //         } else {
+    //             return length(vec3f(d.x, d.y, d.z));
+    //         }
+    //     }
     // }
+    // を以下のように短縮
+    if all(is_inside) {
+        return min(d.x, min(d.y, d.z));
+    } else {
+        return length(select(d, vec3f(0), is_inside));
+    }
 }
 
 fn sdf_solid_body(solid: SolidBody, x: vec3f) -> f32 {
