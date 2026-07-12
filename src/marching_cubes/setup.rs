@@ -22,10 +22,10 @@ pub struct Vertex {
 
 pub fn setup_marching_cubes_resources(
     mut commands: Commands,
-    query: Query<(Entity, &MarchingCubes), Added<MarchingCubes>>,
+    query: Query<(Entity, &MarchingCubes, &GlobalTransform), Added<MarchingCubes>>,
     mut buffers: ResMut<Assets<ShaderBuffer>>,
 ) {
-    for (entity, marching_cubes) in &query {
+    for (entity, marching_cubes, transform) in &query {
         // 表面は2次元的なので、解像度の2/3乗に比例する頂点を確保
         let scale = (marching_cubes.resolution.element_product() as f32).powf(2.0 / 3.0) as u32;
         // 1キューブあたり最大5三角形 x 辺数
@@ -63,7 +63,7 @@ pub fn setup_marching_cubes_resources(
         };
 
         let marching_cubes_uniform = MarchingCubesUniform {
-            world_from_local: Mat4::IDENTITY,
+            world_from_local: transform.to_matrix(),
         };
 
         commands.entity(entity).insert((
