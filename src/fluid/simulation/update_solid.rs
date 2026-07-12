@@ -14,6 +14,10 @@ use crate::fluid::{
     compute_pass::FluidComputePass,
     pipeline::{FluidPipeline, is_pipeline_loaded},
     resources::FluidResources,
+    simulation::{
+        fluid_uniform::{FluidUniformBindGroup, FluidUniformBindGroupLayout},
+        solid_to_fluid::{SolidBodyBufferBindGroup, SolidBodyBufferBindGroupLayout},
+    },
     workgroup::num_workgroups,
 };
 
@@ -54,6 +58,8 @@ impl UpdateSolidPipeline {
         pipeline_cache: &PipelineCache,
         pass: &mut ComputePass,
         bind_group: &UpdateSolidBindGroup,
+        uniform_bind_group: &FluidUniformBindGroup,
+        solid_body_bind_group: &SolidBodyBufferBindGroup,
         resolution: UVec3,
         workgroup_size: UVec3,
     ) {
@@ -62,6 +68,12 @@ impl UpdateSolidPipeline {
         let num_wg = num_workgroups(resolution, workgroup_size);
         pass.set_pipeline(pipeline);
         pass.set_bind_group(0, &bind_group.bind_group, &[]);
+        pass.set_bind_group(
+            1,
+            &uniform_bind_group.bind_group,
+            &[uniform_bind_group.index],
+        );
+        pass.set_bind_group(2, &solid_body_bind_group.0, &[]);
         pass.dispatch_workgroups(num_wg.x, num_wg.y, num_wg.z);
 
         pass.pop_debug_group();
@@ -85,10 +97,16 @@ impl FromWorld for UpdateSolidPipeline {
         let asset_server = world.resource::<AssetServer>();
 
         let bind_group_layout = UpdateSolidResource::bind_group_layout_descriptor(render_device);
+        let uniform_bind_group_layout = world.resource::<FluidUniformBindGroupLayout>();
+        let solid_body_bind_group_layout = world.resource::<SolidBodyBufferBindGroupLayout>();
 
         let pipeline = pipeline_cache.queue_compute_pipeline(ComputePipelineDescriptor {
             label: Some("update_solid_pipeline".into()),
-            layout: vec![bind_group_layout.clone()],
+            layout: vec![
+                bind_group_layout.clone(),
+                uniform_bind_group_layout.0.clone(),
+                solid_body_bind_group_layout.0.clone(),
+            ],
             shader: asset_server.load("shaders/simulation/update_solid.wgsl"),
             entry_point: Some("update_solid".into()),
             ..default()

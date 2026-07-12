@@ -8,6 +8,7 @@ pub mod grid_transition;
 pub mod initialize;
 pub mod projection;
 pub mod reinitialize_levelset;
+pub mod solid_to_fluid;
 pub mod solve_velocity;
 pub mod update_fluid_fraction;
 pub mod update_grad_levelset;
@@ -53,6 +54,7 @@ use crate::fluid::{
             ReinitializeLevelSetBindGroups, ReinitializeLevelSetPlugin,
             reinitialize_levelset_dispatch,
         },
+        solid_to_fluid::{SolidBodyBufferBindGroup, SolidToFluidPlugin},
         solve_velocity::{SolveVelocityBindGroup, SolveVelocityPass, SolveVelocityPipeline},
         update_fluid_fraction::{
             UpdateFluidFractionBindGroup, UpdateFluidFractionPass, UpdateFluidFractionPipeline,
@@ -70,24 +72,25 @@ pub struct FluidSimulationPlugin;
 impl Plugin for FluidSimulationPlugin {
     fn build(&self, app: &mut App) {
         load_shader_library!(app, "simulation/area_fraction.wgsl");
+        load_shader_library!(app, "simulation/primitive_sdf.wgsl");
 
-        app.add_plugins((
-            FluidUniformPlugin,
-            FluidComputePassPlugin::<InitializePass>::default(),
-            FluidComputePassPlugin::<UpdateSolidPass>::default(),
-            FluidComputePassPlugin::<UpdateFluidFractionPass>::default(),
-            FluidComputePassPlugin::<AdvectVelocityPass>::default(),
-            FluidComputePassPlugin::<ApplyForcesPass>::default(),
-            FluidComputePassPlugin::<CollocatedToMacPass>::default(),
-            FluidComputePassPlugin::<DivergencePass>::default(),
-            MultigridProjectionPassPlugin,
-            FluidComputePassPlugin::<SolveVelocityPass>::default(),
-            FluidComputePassPlugin::<MacToCollocatedPass>::default(),
-            FluidComputePassPlugin::<AdvectLevelSetPass>::default(),
-            ReinitializeLevelSetPlugin,
-            FluidComputePassPlugin::<UpdateGradLevelSetPass>::default(),
-            ExtrapolateVelocityPlugin,
-        ));
+        app.add_plugins((FluidUniformPlugin, SolidToFluidPlugin))
+            .add_plugins((
+                FluidComputePassPlugin::<InitializePass>::default(),
+                FluidComputePassPlugin::<UpdateSolidPass>::default(),
+                FluidComputePassPlugin::<UpdateFluidFractionPass>::default(),
+                FluidComputePassPlugin::<AdvectVelocityPass>::default(),
+                FluidComputePassPlugin::<ApplyForcesPass>::default(),
+                FluidComputePassPlugin::<CollocatedToMacPass>::default(),
+                FluidComputePassPlugin::<DivergencePass>::default(),
+                MultigridProjectionPassPlugin,
+                FluidComputePassPlugin::<SolveVelocityPass>::default(),
+                FluidComputePassPlugin::<MacToCollocatedPass>::default(),
+                FluidComputePassPlugin::<AdvectLevelSetPass>::default(),
+                ReinitializeLevelSetPlugin,
+                FluidComputePassPlugin::<UpdateGradLevelSetPass>::default(),
+                ExtrapolateVelocityPlugin,
+            ));
 
         let Some(render_app) = app.get_sub_app_mut(RenderApp) else {
             return;
@@ -203,6 +206,7 @@ fn run_simulation(
         &MultigridIterationGonfig,
         &MultigridNumLevels,
     )>,
+    solid_body_bind_group: Res<SolidBodyBufferBindGroup>,
     pipeline_cache: Res<PipelineCache>,
     pipelines: FluidPipelines,
     state: ResMut<SimulationState>,
@@ -243,6 +247,8 @@ fn run_simulation(
                     &pipeline_cache,
                     &mut pass,
                     &bind_groups.update_solid_bind_group,
+                    &bind_groups.fluid_uniform_bind_group,
+                    &solid_body_bind_group,
                     fluid.resolution,
                     WORKGROUP_SIZE,
                 );
