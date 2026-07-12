@@ -35,5 +35,12 @@ fn vertex(vertex: Vertex) -> VertexOutput {
 
 @fragment
 fn fragment(in: VertexOutput) -> @location(0) vec4f {
-    return vec4f(in.world_normal, 1.0);
+    let normal = in.world_normal.xyz;
+    let light_direction = normalize(vec3f(0.5, 0.3, 0.5));
+    let light_incidence = max(dot(normal, light_direction), 0.0);
+    let albedo = vec3f(0.5, 0.78, 0.83);
+
+    let color = light_incidence * albedo;
+
+    return vec4f(color, 1.0);
 }
