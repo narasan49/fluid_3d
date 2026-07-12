@@ -9,7 +9,7 @@ impl Plugin for CharacterControllerPlugin {
     }
 }
 
-const CHARACTER_ACCELERATION: f32 = 10.0;
+const CHARACTER_ACCELERATION: f32 = 2.0;
 const DAMPING_RATE: f32 = 0.8;
 
 #[derive(Component)]
