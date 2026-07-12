@@ -438,9 +438,9 @@ pub fn setup_multigrid_resources(
         },
         MultigridNumLevels(num_levels),
         MultigridIterationGonfig {
-            num_pre_smooth: 2,
-            num_post_smooth: 2,
-            num_coarsest: 3,
+            num_pre_smooth: 4,
+            num_post_smooth: 4,
+            num_coarsest: 20,
         },
     ));
 }

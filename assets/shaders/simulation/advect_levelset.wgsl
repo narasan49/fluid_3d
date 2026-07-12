@@ -20,10 +20,14 @@ fn advect_levelset(
     var new_level = trilinear(levelset_air0, backtraced_x);
     
     // インターフェース付近は精度よくもう一度補間する
-    if abs(new_level) < 3.0 {
+    if abs(new_level) < 2.0 {
         let base = floor(backtraced_x);
         let t = backtraced_x - base;
-        new_level = cubic_xyz(levelset_air0, vec3i(base), t);
+        let new_level_cubic = cubic_xyz(levelset_air0, vec3i(base), t);
+        if abs(new_level_cubic - new_level) < 0.1 {
+            // レベルセットの再初期化が行われていない点が補間に含まれると、精度が悪化することに対処するワークアラウンド。
+            new_level = new_level_cubic;
+        }
     }
 
     if abs(new_level) < 100.0 {

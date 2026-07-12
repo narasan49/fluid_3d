@@ -19,7 +19,7 @@ fn advect_velocity(
         let backtraced_u = trilinear(u0, backtraced_x);
         textureStore(u1, gid, vec4f(backtraced_u, 0.0));
     } else {
-        textureStore(u1, gid, vec4f(0.0));
+        textureStore(u1, gid, vec4f(textureLoad(u0, gid)));
     }
 
 }
