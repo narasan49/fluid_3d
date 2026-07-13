@@ -18,10 +18,15 @@ use bevy::{
 };
 
 use crate::{
-    fluid::{Fluid3d, Fluid3dPlugin, resources::FluidResources},
-    game::character_controller::{CharacterController, CharacterControllerPlugin},
+    fluid::{Fluid3d, Fluid3dPlugin, GridLength, resources::FluidResources},
+    game::{
+        character_controller::{CharacterController, CharacterControllerPlugin},
+        solid_body_motion::{MovingObject, update_moving_object},
+    },
     marching_cubes::{MarchingCubes, MarchingCubesPlugin},
 };
+
+const LENGTH_UNIT: f32 = 64.0;
 
 fn main() {
     App::new()
@@ -36,7 +41,7 @@ fn main() {
             FreeCameraPlugin,
             InfiniteGridPlugin,
         ))
-        .add_plugins(PhysicsPlugins::default().with_length_unit(10.0))
+        .add_plugins(PhysicsPlugins::default().with_length_unit(LENGTH_UNIT))
         .add_plugins((
             Fluid3dPlugin,
             MarchingCubesPlugin,
@@ -45,7 +50,9 @@ fn main() {
         .add_systems(Startup, setup_dev_tools)
         .add_systems(Startup, setup_scene)
         .add_systems(Update, setup_fluid_render)
+        .add_systems(Update, update_moving_object)
         .insert_resource(Gravity(9.8 * Vec3::NEG_Y))
+        .insert_resource(GridLength(1.0 / LENGTH_UNIT))
         .run();
 }
 
@@ -70,7 +77,7 @@ fn setup_scene(
             rho: 997.0,
             gravity: -Vec3::Y * 9.8,
         },
-        Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),
+        Transform::from_translation(Vec3::new(0.0, 0.15, 0.0)),
     ));
 
     let ground_shape = Cuboid::new(2.0, 0.1, 2.0);
@@ -100,14 +107,15 @@ fn setup_scene(
         RigidBody::Kinematic,
     ));
 
-    let cube = Cuboid::from_size(Vec3::splat(0.2));
+    let cube = Cuboid::from_size(Vec3::new(0.2, 0.5, 0.2));
     commands.spawn((
         Name::new("Cube"),
-        Transform::from_xyz(0.2, -0.2, -0.2),
+        Transform::default().with_translation(Vec3::new(0.1, -0.15, -0.2)),
         Mesh3d(meshes.add(cube)),
         MeshMaterial3d(materials.add(Color::srgb(0.8, 0.8, 0.8))),
         cube.collider(),
         RigidBody::Kinematic,
+        MovingObject,
     ));
 }
 

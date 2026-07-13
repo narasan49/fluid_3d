@@ -51,15 +51,19 @@ pub struct Fluid3d {
     pub gravity: Vec3,
 }
 
+#[derive(Resource)]
+pub struct GridLength(pub f32);
+
 fn setup_fluid_component(
     mut commands: Commands,
     query: Query<(Entity, &Fluid3d, &Transform), Added<Fluid3d>>,
+    grid_length: Res<GridLength>,
     mut images: ResMut<Assets<Image>>,
 ) {
     for (entity, fluid3d, transform) in &query {
         let resources = FluidResources::new(&mut images, fluid3d.resolution);
         let fluid_uniform = FluidUniform {
-            dx: 0.1,
+            dx: grid_length.0,
             dt: 0.0,
             rho: fluid3d.rho,
             resolution: fluid3d.resolution,
