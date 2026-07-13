@@ -33,12 +33,7 @@ fn divergence(
         textureLoad(w_mac, gid + Z).x,
     );
 
-    let u_solid_minus = textureLoad(u_solid, gid).xyz;
-    let u_solid_plus = vec3f(
-        textureLoad(u_solid, gid + X).x,
-        textureLoad(u_solid, gid + Y).y,
-        textureLoad(u_solid, gid + Z).z,
-    );
+    let u_solid_center = textureLoad(u_solid, gid).xyz;
     
     let f_minus = textureLoad(fluid_fraction, gid).xyz;
     let f_plus = vec3f(
@@ -48,7 +43,7 @@ fn divergence(
     );
 
     var du = f_plus * u_plus - f_minus * u_minus;
-    let du_solid = 0.5 * ((1.0 - f_plus) * u_solid_plus - (1.0 - f_minus) * u_solid_minus);
+    let du_solid = (f_minus - f_plus) * u_solid_center;
     let result = - (du.x + du.y + du.z + du_solid.x + du_solid.y + du_solid.z) / fluid_uniform.dx;
 
     textureStore(div, gid, vec4f(result, 0.0, 0.0, 0.0));
