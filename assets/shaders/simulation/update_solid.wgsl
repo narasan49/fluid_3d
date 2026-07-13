@@ -43,10 +43,14 @@ fn update_solid(
     level_solid = min(level_solid, f32(dim.z - gid.z) - 1.0);
     
     for (var i = 0u; i < array_length; i++) {
-        let sdf0 = sdf_solid_body(solid_bodies[i], global_position) * location_to_voxel_scale;
+        // meter -> pixel
+        let sdf0 = sdf_solid_body(solid_bodies[i], global_position) / fluid_uniform.dx;
         if sdf0 < level_solid {
             level_solid = sdf0;
-            velocity = solid_bodies[i].linear_velocity * location_to_voxel_scale;
+        }
+        if sdf0 < 0.5 {
+            // m/s -> pixel/s
+            velocity = solid_bodies[i].linear_velocity / fluid_uniform.dx;
         }
     }
 

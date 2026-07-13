@@ -56,7 +56,7 @@ fn sdf_cube(cube: Cube, inverse_transform: mat4x4f, x: vec3f) -> f32 {
     // if is_inside.x {
     //     if is_inside.y {
     //         if is_inside.z {
-    //             return min(d.x, min(d.y, d.z));
+    //             return max(d.x, max(d.y, d.z));
     //         } else {
     //             return d.z;
     //         }
@@ -84,7 +84,7 @@ fn sdf_cube(cube: Cube, inverse_transform: mat4x4f, x: vec3f) -> f32 {
     // }
     // を以下のように短縮
     if all(is_inside) {
-        return min(d.x, min(d.y, d.z));
+        return max(d.x, max(d.y, d.z));
     } else {
         return length(select(d, vec3f(0), is_inside));
     }
