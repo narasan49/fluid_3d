@@ -93,10 +93,12 @@ fn prepare_bind_group(
 
 fn update_fluid_uniform(
     mut query: Query<(&mut FluidUniform, &Fluid3d, &Transform)>,
-    time: Res<Time>,
+    _time: Res<Time>,
 ) {
     for (mut uniform, fluid, transform) in &mut query {
-        uniform.dt = time.delta_secs();
+        // ToDo: dtを固定。今後、FixedUpdateへ対応する。
+        // uniform.dt = time.delta_secs();
+        uniform.dt = 0.01667;
         uniform.rho = fluid.rho;
         uniform.resolution = fluid.resolution;
         uniform.gravity = fluid.gravity;
