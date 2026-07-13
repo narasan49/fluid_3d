@@ -65,6 +65,7 @@ pub struct MarchingCubesDrawResource {
 #[derive(Component, ExtractComponent, ShaderType, Clone)]
 pub struct MarchingCubesUniform {
     pub world_from_local: Mat4,
+    pub half_size: Vec3,
 }
 
 #[derive(Resource)]

@@ -62,6 +62,7 @@ fn setup_fluid_component(
 ) {
     for (entity, fluid3d, transform) in &query {
         let resources = FluidResources::new(&mut images, fluid3d.resolution);
+        let half_size = 0.5 * fluid3d.resolution.as_vec3() * (grid_length.0 as f32);
         let fluid_uniform = FluidUniform {
             dx: grid_length.0,
             dt: 0.0,
@@ -69,6 +70,7 @@ fn setup_fluid_component(
             resolution: fluid3d.resolution,
             gravity: fluid3d.gravity,
             transform: transform.to_matrix(),
+            half_size,
         };
         let init_resource = InitializeResource::new(&resources);
 

@@ -56,6 +56,7 @@ pub struct FluidUniform {
     pub gravity: Vec3,
     pub transform: Mat4,
     pub resolution: UVec3,
+    pub half_size: Vec3,
 }
 
 #[derive(Resource)]

@@ -15,6 +15,7 @@ struct VertexOutput {
 
 struct MarchingCubesUniform {
     world_from_local: mat4x4f,
+    half_size: vec3f,
 }
 
 @group(0) @binding(0) var<uniform> mc_uniform: MarchingCubesUniform;
@@ -23,7 +24,8 @@ struct MarchingCubesUniform {
 @vertex
 fn vertex(vertex: Vertex) -> VertexOutput {
     var out: VertexOutput;
-    out.world_position = mesh_functions::mesh_position_local_to_world(mc_uniform.world_from_local, vertex.position);
+    let local_pos = vertex.position * vec4f(2.0 * mc_uniform.half_size, 1.0);
+    out.world_position = mesh_functions::mesh_position_local_to_world(mc_uniform.world_from_local, local_pos);
     out.clip_position = view.clip_from_world * out.world_position;
     out.world_normal = normalize(mat3x3f(
         mc_uniform.world_from_local[0].xyz,

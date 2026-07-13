@@ -64,6 +64,7 @@ pub fn setup_marching_cubes_resources(
 
         let marching_cubes_uniform = MarchingCubesUniform {
             world_from_local: transform.to_matrix(),
+            half_size: marching_cubes.half_size,
         };
 
         commands.entity(entity).insert((

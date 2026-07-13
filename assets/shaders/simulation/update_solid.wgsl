@@ -17,7 +17,7 @@ fn update_solid(
     if any(gid >= dim) {
         return;
     }
-    let local_position = vec3f(gid) / vec3f(dim) - 0.5;
+    let local_position = 2.0 * (vec3f(gid) / vec3f(dim) - 0.5) * fluid_uniform.half_size;
     let global_position = (fluid_uniform.transform * vec4f(local_position, 1.0)).xyz;
     let location_to_voxel_scale = length(vec3f(gid));
 

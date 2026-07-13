@@ -7,4 +7,5 @@ struct FluidUniform {
     gravity: vec3f,
     transform: mat4x4f,
     resolution: vec3u,
+    half_size: vec3f,
 }
