@@ -7,12 +7,14 @@
 fn initialize(
     @builtin(global_invocation_id) gid: vec3u,
 ) {
-
-    if all(gid < textureDimensions(levelset_air0)) {
+    let dim = textureDimensions(levelset_air0);
+    if all(gid < dim) {
         // ToDo: いったん初期値をハードコード
-        let surface_level = 10.0;
-        textureStore(levelset_air0, gid, vec4f(f32(gid.y) - surface_level, vec3f(0)));
-        textureStore(levelset_air1, gid, vec4f(f32(gid.y) - surface_level, vec3f(0)));
+        let surface_level = 30.0;
+        let level = f32(gid.y) + f32(gid.x) * 0.8 - surface_level;
+        
+        textureStore(levelset_air0, gid, vec4f(level, vec3f(0)));
+        textureStore(levelset_air1, gid, vec4f(level, vec3f(0)));
         textureStore(grad_levelset_air, gid, vec4f(0.0, 1.0, 0.0, 0.0));
     }
 
