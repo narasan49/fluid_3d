@@ -27,7 +27,7 @@ fn mac_to_collocated(
         counts.x += 1;
     }
     if level_xminus < 0.0 {
-        u.x += textureLoad(u_mac, gid - X).x;
+        u.x += textureLoad(u_mac, gid).x;
         counts.x += 1;
     }
     if counts.x > 0 {
@@ -41,7 +41,7 @@ fn mac_to_collocated(
         counts.y += 1;
     }
     if level_yminus < 0.0 {
-        u.y += textureLoad(v_mac, gid - Y).x;
+        u.y += textureLoad(v_mac, gid).x;
         counts.y += 1;
     }
     if counts.y > 0 {
@@ -55,7 +55,7 @@ fn mac_to_collocated(
         counts.z += 1;
     }
     if level_zminus < 0.0 {
-        u.z += textureLoad(w_mac, gid - Z).x;
+        u.z += textureLoad(w_mac, gid).x;
         counts.z += 1;
     }
     if counts.z > 0 {
