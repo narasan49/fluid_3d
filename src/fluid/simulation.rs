@@ -10,7 +10,7 @@ pub mod projection;
 pub mod reinitialize_levelset;
 pub mod solid_to_fluid;
 pub mod solve_velocity;
-pub mod update_fluid_fraction;
+pub mod update_area_fractions;
 pub mod update_levelset_grad;
 pub mod update_solid;
 
@@ -56,8 +56,8 @@ use crate::fluid::{
         },
         solid_to_fluid::{SolidBodyBufferBindGroup, SolidToFluidPlugin},
         solve_velocity::{SolveVelocityBindGroup, SolveVelocityPass, SolveVelocityPipeline},
-        update_fluid_fraction::{
-            UpdateFluidFractionBindGroup, UpdateFluidFractionPass, UpdateFluidFractionPipeline,
+        update_area_fractions::{
+            UpdateAreaFractionsBindGroup, UpdateAreaFractionsPass, UpdateAreaFractionsPipeline,
         },
         update_levelset_grad::{
             UpdateLevelSetGradBindGroup, UpdateLevelSetGradPass, UpdateLevelSetGradPipeline,
@@ -78,7 +78,7 @@ impl Plugin for FluidSimulationPlugin {
             .add_plugins((
                 FluidComputePassPlugin::<InitializePass>::default(),
                 FluidComputePassPlugin::<UpdateSolidPass>::default(),
-                FluidComputePassPlugin::<UpdateFluidFractionPass>::default(),
+                FluidComputePassPlugin::<UpdateAreaFractionsPass>::default(),
                 FluidComputePassPlugin::<AdvectVelocityPass>::default(),
                 FluidComputePassPlugin::<ApplyForcesPass>::default(),
                 FluidComputePassPlugin::<CollocatedToMacPass>::default(),
@@ -118,7 +118,7 @@ struct SimulationBindGroups {
     fluid_uniform_bind_group: &'static FluidUniformBindGroup,
     init_bind_group: &'static InitializeBindGroup,
     update_solid_bind_group: &'static UpdateSolidBindGroup,
-    update_fluid_fraction_bind_group: &'static UpdateFluidFractionBindGroup,
+    update_fluid_fraction_bind_group: &'static UpdateAreaFractionsBindGroup,
     advect_velocity_bind_group: &'static AdvectVelocityBindGroup,
     apply_forces_bind_group: &'static ApplyForcesBindGroup,
     collocated_to_mac_bind_group: &'static CollocatedToMacBindGroup,
@@ -136,7 +136,7 @@ struct SimulationBindGroups {
 struct FluidPipelines<'w> {
     init_pipeline: Res<'w, InitializePipeline>,
     update_solid_pipeline: Res<'w, UpdateSolidPipeline>,
-    update_fluid_fraction_pipeline: Res<'w, UpdateFluidFractionPipeline>,
+    update_fluid_fraction_pipeline: Res<'w, UpdateAreaFractionsPipeline>,
     advect_velocity_pipeline: Res<'w, AdvectVelocityPipeline>,
     apply_forces_pipeline: Res<'w, ApplyForcesPipeline>,
     collocated_to_mac_pipeline: Res<'w, CollocatedToMacPipeline>,

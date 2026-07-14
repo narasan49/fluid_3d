@@ -27,10 +27,14 @@ pub struct FluidResources {
     pub w_mac: Handle<Image>,
     /// ボクセルが固体を含むときの固体の速度
     pub u_solid: Handle<Image>,
-    /// ボクセルの各面における、固体に対して流体が占める割合(area fraction)。
+    /// ボクセルの各面における、非固体が占める割合(area fraction)
     /// rgbチャンネルに-X, -Y, -Z面のarea fractionを格納する。
     /// サイズは resolution + UVec3::ONE
     pub non_solid_fraction: Handle<Image>,
+    /// ボクセルの各面における、非流体が占める割合
+    /// rgbチャンネルに-X, -Y, -Z面のarea fractionを格納する。
+    /// サイズは resolution + UVec3::ONE
+    pub non_fluid_fraction: Handle<Image>,
     /// ボクセルの発散場
     pub div: Handle<Image>,
     /// 流体の圧力
@@ -59,6 +63,8 @@ impl FluidResources {
         let u_solid = new_texture_storage_3d(images, resolution, TextureFormat::Rgba16Float);
         let non_solid_fraction =
             new_texture_storage_3d(images, resolution_xyz, TextureFormat::Rgba16Float);
+        let non_fluid_fraction =
+            new_texture_storage_3d(images, resolution_xyz, TextureFormat::Rgba16Float);
         let div = new_texture_storage_3d(images, resolution, TextureFormat::R32Float);
         let p = new_texture_storage_3d(images, resolution, TextureFormat::R32Float);
         let labels0 = new_texture_storage_3d(images, resolution, TextureFormat::R8Uint);
@@ -80,6 +86,7 @@ impl FluidResources {
             w_mac,
             u_solid,
             non_solid_fraction,
+            non_fluid_fraction,
             div,
             p,
             labels0,

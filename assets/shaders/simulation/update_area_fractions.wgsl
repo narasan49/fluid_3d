@@ -1,8 +1,10 @@
 @group(0) @binding(0) var levelset_solid: texture_storage_3d<r32float, read>;
-@group(0) @binding(1) var non_solid_fraction: texture_storage_3d<rgba16float, write>;
+@group(0) @binding(1) var levelset_air0: texture_storage_3d<r32float, read>;
+@group(0) @binding(2) var non_solid_fraction: texture_storage_3d<rgba16float, write>;
+@group(0) @binding(3) var non_fluid_fraction: texture_storage_3d<rgba16float, write>;
 
 @compute @workgroup_size(8, 8, 4)
-fn update_fluid_fraction(
+fn update_area_fractions(
     @builtin(global_invocation_id) gid: vec3u,
 ) {
     let dim = textureDimensions(non_solid_fraction);
@@ -10,8 +12,11 @@ fn update_fluid_fraction(
         return;
     }
 
-    let fraction = area_fraction(levelset_solid, vec3i(gid) - vec3i(1), vec3i(dim));
-    textureStore(non_solid_fraction, gid, vec4f(fraction, 0.0));
+    let f_non_solid = area_fraction(levelset_solid, vec3i(gid) - vec3i(1), vec3i(dim));
+    textureStore(non_solid_fraction, gid, vec4f(f_non_solid, 0.0));
+
+    let f_non_fluid = area_fraction(levelset_air0, vec3i(gid) - vec3i(1), vec3i(dim));
+    textureStore(non_fluid_fraction, gid, vec4f(f_non_fluid, 0.0));
 }
 
 fn area_fraction(

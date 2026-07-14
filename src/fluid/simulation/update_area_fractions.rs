@@ -17,47 +17,53 @@ use crate::fluid::{
     workgroup::num_workgroups,
 };
 
-pub struct UpdateFluidFractionPass;
+pub struct UpdateAreaFractionsPass;
 
-impl FluidComputePass for UpdateFluidFractionPass {
-    type B = UpdateFluidFractionBindGroup;
-    type P = UpdateFluidFractionPipeline;
-    type R = UpdateFluidFractionResource;
+impl FluidComputePass for UpdateAreaFractionsPass {
+    type B = UpdateAreaFractionsBindGroup;
+    type P = UpdateAreaFractionsPipeline;
+    type R = UpdateAreaFractionsResource;
 }
 
 #[derive(Component, ExtractComponent, Clone, AsBindGroup)]
-pub struct UpdateFluidFractionResource {
+pub struct UpdateAreaFractionsResource {
     #[storage_texture(0, image_format = R32Float, dimension = "3d", access = ReadOnly)]
     pub levelset_solid: Handle<Image>,
-    #[storage_texture(1, image_format = Rgba16Float, dimension = "3d", access = WriteOnly)]
+    #[storage_texture(1, image_format = R32Float, dimension = "3d", access = ReadOnly)]
+    pub levelset_air0: Handle<Image>,
+    #[storage_texture(2, image_format = Rgba16Float, dimension = "3d", access = WriteOnly)]
     pub non_solid_fraction: Handle<Image>,
+    #[storage_texture(3, image_format = Rgba16Float, dimension = "3d", access = WriteOnly)]
+    pub non_fluid_fraction: Handle<Image>,
 }
 
-impl UpdateFluidFractionResource {
+impl UpdateAreaFractionsResource {
     pub fn new(resources: &FluidResources) -> Self {
         Self {
             levelset_solid: resources.levelset_solid.clone(),
+            levelset_air0: resources.levelset_air0.clone(),
             non_solid_fraction: resources.non_solid_fraction.clone(),
+            non_fluid_fraction: resources.non_fluid_fraction.clone(),
         }
     }
 }
 
 #[derive(Resource)]
-pub struct UpdateFluidFractionPipeline {
+pub struct UpdateAreaFractionsPipeline {
     pipeline: CachedComputePipelineId,
     bind_group_layout: BindGroupLayoutDescriptor,
 }
 
-impl UpdateFluidFractionPipeline {
+impl UpdateAreaFractionsPipeline {
     pub fn dispatch(
         &self,
         pipeline_cache: &PipelineCache,
         pass: &mut ComputePass,
-        bind_group: &UpdateFluidFractionBindGroup,
+        bind_group: &UpdateAreaFractionsBindGroup,
         resolution: UVec3,
         workgroup_size: UVec3,
     ) {
-        pass.push_debug_group("update_fluid_fraction");
+        pass.push_debug_group("update_area_fraction");
         let pipeline = pipeline_cache.get_compute_pipeline(self.pipeline).unwrap();
         let num_wg = num_workgroups(resolution + UVec3::ONE, workgroup_size);
         pass.set_pipeline(pipeline);
@@ -68,7 +74,7 @@ impl UpdateFluidFractionPipeline {
     }
 }
 
-impl FluidPipeline for UpdateFluidFractionPipeline {
+impl FluidPipeline for UpdateAreaFractionsPipeline {
     fn bind_group_layoput(&self) -> &BindGroupLayoutDescriptor {
         &self.bind_group_layout
     }
@@ -78,20 +84,20 @@ impl FluidPipeline for UpdateFluidFractionPipeline {
     }
 }
 
-impl FromWorld for UpdateFluidFractionPipeline {
+impl FromWorld for UpdateAreaFractionsPipeline {
     fn from_world(world: &mut World) -> Self {
         let render_device = world.resource::<RenderDevice>();
         let pipeline_cache = world.resource::<PipelineCache>();
         let asset_server = world.resource::<AssetServer>();
 
         let bind_group_layout =
-            UpdateFluidFractionResource::bind_group_layout_descriptor(render_device);
+            UpdateAreaFractionsResource::bind_group_layout_descriptor(render_device);
 
         let pipeline = pipeline_cache.queue_compute_pipeline(ComputePipelineDescriptor {
-            label: Some("update_fluid_fraction_pipeline".into()),
+            label: Some("update_area_fractions_pipeline".into()),
             layout: vec![bind_group_layout.clone()],
-            shader: asset_server.load("shaders/simulation/update_fluid_fraction.wgsl"),
-            entry_point: Some("update_fluid_fraction".into()),
+            shader: asset_server.load("shaders/simulation/update_area_fractions.wgsl"),
+            entry_point: Some("update_area_fractions".into()),
             ..default()
         });
 
@@ -103,11 +109,11 @@ impl FromWorld for UpdateFluidFractionPipeline {
 }
 
 #[derive(Component)]
-pub struct UpdateFluidFractionBindGroup {
+pub struct UpdateAreaFractionsBindGroup {
     bind_group: BindGroup,
 }
 
-impl From<BindGroup> for UpdateFluidFractionBindGroup {
+impl From<BindGroup> for UpdateAreaFractionsBindGroup {
     fn from(bind_group: BindGroup) -> Self {
         Self { bind_group }
     }

@@ -21,7 +21,7 @@ use crate::fluid::{
             FastIterativeMethodInitializeResource, FastIterativeMethodUpdateResource,
         },
         solve_velocity::SolveVelocityResource,
-        update_fluid_fraction::UpdateFluidFractionResource,
+        update_area_fractions::UpdateAreaFractionsResource,
         update_levelset_grad::UpdateLevelSetGradResource,
         update_solid::UpdateSolidResource,
     },
@@ -75,7 +75,7 @@ fn setup_fluid_component(
         let init_resource = InitializeResource::new(&resources);
 
         let update_solid_resource = UpdateSolidResource::new(&resources);
-        let update_fluid_fraction_resource = UpdateFluidFractionResource::new(&resources);
+        let update_fluid_fraction_resource = UpdateAreaFractionsResource::new(&resources);
         let advect_velocity_resource = AdvectVelocityResource::new(&resources);
         let apply_forces_resource = ApplyForcesResource::new(&resources);
         let collocated_to_mac_resource = CollocatedToMacResource::new(&resources);
