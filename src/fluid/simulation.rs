@@ -11,7 +11,7 @@ pub mod reinitialize_levelset;
 pub mod solid_to_fluid;
 pub mod solve_velocity;
 pub mod update_fluid_fraction;
-pub mod update_grad_levelset;
+pub mod update_levelset_grad;
 pub mod update_solid;
 
 use bevy::{
@@ -59,8 +59,8 @@ use crate::fluid::{
         update_fluid_fraction::{
             UpdateFluidFractionBindGroup, UpdateFluidFractionPass, UpdateFluidFractionPipeline,
         },
-        update_grad_levelset::{
-            UpdateGradLevelSetBindGroup, UpdateGradLevelSetPass, UpdateGradLevelSetPipeline,
+        update_levelset_grad::{
+            UpdateLevelSetGradBindGroup, UpdateLevelSetGradPass, UpdateLevelSetGradPipeline,
         },
         update_solid::{UpdateSolidBindGroup, UpdateSolidPass, UpdateSolidPipeline},
     },
@@ -88,7 +88,7 @@ impl Plugin for FluidSimulationPlugin {
                 FluidComputePassPlugin::<MacToCollocatedPass>::default(),
                 FluidComputePassPlugin::<AdvectLevelSetPass>::default(),
                 ReinitializeLevelSetPlugin,
-                FluidComputePassPlugin::<UpdateGradLevelSetPass>::default(),
+                FluidComputePassPlugin::<UpdateLevelSetGradPass>::default(),
                 ExtrapolateVelocityPlugin,
             ));
 
@@ -128,7 +128,7 @@ struct SimulationBindGroups {
     mac_to_collocated_bind_group: &'static MacToCollocatedBindGroup,
     advect_levelset_bind_group: &'static AdvectLevelSetBindGroup,
     reinitialize_levelset_bind_groups: ReinitializeLevelSetBindGroups,
-    update_grad_levelset_bind_group: &'static UpdateGradLevelSetBindGroup,
+    update_grad_levelset_bind_group: &'static UpdateLevelSetGradBindGroup,
     extrapolate_velocity_bind_groups: &'static ExtrapolateVelocityBindGroups,
 }
 
@@ -148,7 +148,7 @@ struct FluidPipelines<'w> {
     fim_init_pipeline: Res<'w, FastIterativeMethodInitializePipeline>,
     fim_init_labels_pipeline: Res<'w, FastIterativeMethodInitializeActiveLabelsPipeline>,
     fim_update_pipeline: Res<'w, FastIterativeMethodUpdatePipeline>,
-    update_grad_levelset_pipeline: Res<'w, UpdateGradLevelSetPipeline>,
+    update_grad_levelset_pipeline: Res<'w, UpdateLevelSetGradPipeline>,
     extrapolate_velocity_pipeline: Res<'w, ExtrapolateVelocityPipeline>,
 }
 

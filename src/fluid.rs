@@ -22,7 +22,7 @@ use crate::fluid::{
         },
         solve_velocity::SolveVelocityResource,
         update_fluid_fraction::UpdateFluidFractionResource,
-        update_grad_levelset::UpdateGradLevelSetResource,
+        update_levelset_grad::UpdateLevelSetGradResource,
         update_solid::UpdateSolidResource,
     },
 };
@@ -97,7 +97,7 @@ fn setup_fluid_component(
         let fim_init_labels_resource =
             FastIterativeMethodInitializeActiveLabelsResource::new(&resources);
         let fim_update_resource = FastIterativeMethodUpdateResource::new(&resources);
-        let update_grad_levelset_resource = UpdateGradLevelSetResource::new(&resources);
+        let update_grad_levelset_resource = UpdateLevelSetGradResource::new(&resources);
         let extrapolate_velocity_resource = ExtrapolateVelocityResource::new(&resources);
 
         commands

@@ -18,43 +18,46 @@ use crate::fluid::{
     workgroup::num_workgroups,
 };
 
-pub struct UpdateGradLevelSetPass;
+pub struct UpdateLevelSetGradPass;
 
-impl FluidComputePass for UpdateGradLevelSetPass {
-    type B = UpdateGradLevelSetBindGroup;
-    type P = UpdateGradLevelSetPipeline;
-    type R = UpdateGradLevelSetResource;
+impl FluidComputePass for UpdateLevelSetGradPass {
+    type B = UpdateLevelSetGradBindGroup;
+    type P = UpdateLevelSetGradPipeline;
+    type R = UpdateLevelSetGradResource;
 }
 
 #[derive(Component, ExtractComponent, Clone, AsBindGroup)]
-pub struct UpdateGradLevelSetResource {
+pub struct UpdateLevelSetGradResource {
     #[storage_texture(0, image_format = R32Float, dimension = "3d", access = ReadOnly)]
     pub levelset_air0: Handle<Image>,
-    #[storage_texture(1, image_format = Rgba16Snorm, dimension = "3d", access = WriteOnly)]
-    pub grad_levelset_air: Handle<Image>,
+    #[storage_texture(1, image_format = R32Float, dimension = "3d", access = ReadOnly)]
+    pub levelset_solid: Handle<Image>,
+    #[storage_texture(2, image_format = Rgba16Float, dimension = "3d", access = WriteOnly)]
+    pub levelset_and_grad_air: Handle<Image>,
 }
 
-impl UpdateGradLevelSetResource {
+impl UpdateLevelSetGradResource {
     pub fn new(resources: &FluidResources) -> Self {
         Self {
             levelset_air0: resources.levelset_air0.clone(),
-            grad_levelset_air: resources.grad_levelset_air.clone(),
+            levelset_solid: resources.levelset_solid.clone(),
+            levelset_and_grad_air: resources.levelset_and_grad_air.clone(),
         }
     }
 }
 
 #[derive(Resource)]
-pub struct UpdateGradLevelSetPipeline {
+pub struct UpdateLevelSetGradPipeline {
     pipeline: CachedComputePipelineId,
     bind_group_layout: BindGroupLayoutDescriptor,
 }
 
-impl UpdateGradLevelSetPipeline {
+impl UpdateLevelSetGradPipeline {
     pub fn dispatch(
         &self,
         pipeline_cache: &PipelineCache,
         pass: &mut ComputePass,
-        bind_group: &UpdateGradLevelSetBindGroup,
+        bind_group: &UpdateLevelSetGradBindGroup,
         uniform_bind_group: &FluidUniformBindGroup,
         resolution: UVec3,
         workgroup_size: UVec3,
@@ -75,7 +78,7 @@ impl UpdateGradLevelSetPipeline {
     }
 }
 
-impl FluidPipeline for UpdateGradLevelSetPipeline {
+impl FluidPipeline for UpdateLevelSetGradPipeline {
     fn bind_group_layoput(&self) -> &BindGroupLayoutDescriptor {
         &self.bind_group_layout
     }
@@ -85,14 +88,14 @@ impl FluidPipeline for UpdateGradLevelSetPipeline {
     }
 }
 
-impl FromWorld for UpdateGradLevelSetPipeline {
+impl FromWorld for UpdateLevelSetGradPipeline {
     fn from_world(world: &mut World) -> Self {
         let render_device = world.resource::<RenderDevice>();
         let pipeline_cache = world.resource::<PipelineCache>();
         let asset_server = world.resource::<AssetServer>();
 
         let bind_group_layout =
-            UpdateGradLevelSetResource::bind_group_layout_descriptor(render_device);
+            UpdateLevelSetGradResource::bind_group_layout_descriptor(render_device);
         let uniform_bind_group_layout = &world.resource::<FluidUniformBindGroupLayout>().0;
 
         let pipeline = pipeline_cache.queue_compute_pipeline(ComputePipelineDescriptor {
@@ -111,11 +114,11 @@ impl FromWorld for UpdateGradLevelSetPipeline {
 }
 
 #[derive(Component)]
-pub struct UpdateGradLevelSetBindGroup {
+pub struct UpdateLevelSetGradBindGroup {
     bind_group: BindGroup,
 }
 
-impl From<BindGroup> for UpdateGradLevelSetBindGroup {
+impl From<BindGroup> for UpdateLevelSetGradBindGroup {
     fn from(bind_group: BindGroup) -> Self {
         Self { bind_group }
     }

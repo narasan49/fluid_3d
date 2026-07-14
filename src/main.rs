@@ -126,8 +126,7 @@ fn setup_fluid_render(
 ) {
     for (entity, resources, fluid) in &query {
         commands.entity(entity).insert(MarchingCubes {
-            sdf: resources.levelset_air0.clone(),
-            grad_sdf: resources.grad_levelset_air.clone(),
+            grad_sdf: resources.levelset_and_grad_air.clone(),
             resolution: fluid.resolution,
         });
     }

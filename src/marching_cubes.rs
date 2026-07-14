@@ -25,7 +25,6 @@ impl Plugin for MarchingCubesPlugin {
 
 #[derive(Component, ExtractComponent, Clone)]
 pub struct MarchingCubes {
-    pub sdf: Handle<Image>,
     pub grad_sdf: Handle<Image>,
     pub resolution: UVec3,
     pub half_size: Vec3,

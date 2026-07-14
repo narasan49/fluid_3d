@@ -53,7 +53,6 @@ pub fn setup_marching_cubes_resources(
             vertices: vertices.clone(),
             indirect_args: indirect_args.clone(),
             lookup_table,
-            sdf: marching_cubes.sdf.clone(),
             grad_sdf: marching_cubes.grad_sdf.clone(),
         };
 

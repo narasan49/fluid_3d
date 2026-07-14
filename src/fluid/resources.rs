@@ -11,8 +11,8 @@ pub struct FluidResources {
     pub levelset_air0: Handle<Image>,
     /// 流体レベルセットの中間バッファ
     pub levelset_air1: Handle<Image>,
-    /// 流体レベルセットの勾配
-    pub grad_levelset_air: Handle<Image>,
+    /// MarchingCubesの頂点生成用の流体レベルセットとその勾配。
+    pub levelset_and_grad_air: Handle<Image>,
     /// 剛体レベルセット。0未満が剛体、0以上がそれ以外を表す。
     pub levelset_solid: Handle<Image>,
     /// ボクセルが流体を含むときの流体の速度
@@ -47,8 +47,8 @@ impl FluidResources {
         let resolution_xyz = resolution + UVec3::ONE;
         let levelset_air0 = new_texture_storage_3d(images, resolution, TextureFormat::R32Float);
         let levelset_air1 = new_texture_storage_3d(images, resolution, TextureFormat::R32Float);
-        let grad_levelset_air =
-            new_texture_storage_3d(images, resolution, TextureFormat::Rgba16Snorm);
+        let levelset_and_grad_air =
+            new_texture_storage_3d(images, resolution, TextureFormat::Rgba16Float);
         let levelset_solid = new_texture_storage_3d(images, resolution, TextureFormat::R32Float);
 
         let u0 = new_texture_storage_3d(images, resolution, TextureFormat::Rgba16Float);
@@ -71,7 +71,7 @@ impl FluidResources {
         Self {
             levelset_air0,
             levelset_air1,
-            grad_levelset_air,
+            levelset_and_grad_air,
             levelset_solid,
             u0,
             u1,

@@ -28,9 +28,8 @@ struct DrawIndirectArgs {
 
 @group(0) @binding(0) var<storage, read_write> vertices: array<Vertex>;
 @group(0) @binding(1) var<storage, read_write> indirect_args: DrawIndirectArgs;
-@group(0) @binding(2) var sdf: texture_storage_3d<r32float, read>;
-@group(0) @binding(3) var grad_sdf: texture_storage_3d<rgba16snorm, read>;
-@group(0) @binding(4) var<storage, read> lookup_table: array<EdgeTriangles, 256>;
+@group(0) @binding(2) var grad_sdf: texture_storage_3d<rgba16float, read>;
+@group(0) @binding(3) var<storage, read> lookup_table: array<EdgeTriangles, 256>;
 
 const offsets_unit: array<vec3u, 8> = array<vec3u, 8>(
     vec3u(0, 0, 0),
@@ -47,8 +46,8 @@ const offsets_unit: array<vec3u, 8> = array<vec3u, 8>(
 fn build_vertex_buffer(
     @builtin(global_invocation_id) gid: vec3u,
 ) {
-    let dim = textureDimensions(sdf);
-    if any(gid >= (dim - vec3u(1))) {
+    let dim = textureDimensions(grad_sdf);
+    if any(gid == vec3u(0)) || any(gid >= (dim - vec3u(2))) {
         return;
     }
     let dimf = vec3f(dim);
@@ -64,26 +63,37 @@ fn build_vertex_buffer(
         vec3f(offsets_unit[7]) / dimf,
     );
 
+    let level_and_normals = array<vec4f, 8>(
+        textureLoad(grad_sdf, gid + offsets_unit[0]),
+        textureLoad(grad_sdf, gid + offsets_unit[1]),
+        textureLoad(grad_sdf, gid + offsets_unit[2]),
+        textureLoad(grad_sdf, gid + offsets_unit[3]),
+        textureLoad(grad_sdf, gid + offsets_unit[4]),
+        textureLoad(grad_sdf, gid + offsets_unit[5]),
+        textureLoad(grad_sdf, gid + offsets_unit[6]),
+        textureLoad(grad_sdf, gid + offsets_unit[7]),
+    );
+
     let cube_levels = array<f32, 8>(
-        textureLoad(sdf, gid + offsets_unit[0]).x,
-        textureLoad(sdf, gid + offsets_unit[1]).x,
-        textureLoad(sdf, gid + offsets_unit[2]).x,
-        textureLoad(sdf, gid + offsets_unit[3]).x,
-        textureLoad(sdf, gid + offsets_unit[4]).x,
-        textureLoad(sdf, gid + offsets_unit[5]).x,
-        textureLoad(sdf, gid + offsets_unit[6]).x,
-        textureLoad(sdf, gid + offsets_unit[7]).x,
+        level_and_normals[0].x,
+        level_and_normals[1].x,
+        level_and_normals[2].x,
+        level_and_normals[3].x,
+        level_and_normals[4].x,
+        level_and_normals[5].x,
+        level_and_normals[6].x,
+        level_and_normals[7].x,
     );
 
     let cube_normanls = array<vec3f, 8>(
-        textureLoad(grad_sdf, gid + offsets_unit[0]).xyz,
-        textureLoad(grad_sdf, gid + offsets_unit[1]).xyz,
-        textureLoad(grad_sdf, gid + offsets_unit[2]).xyz,
-        textureLoad(grad_sdf, gid + offsets_unit[3]).xyz,
-        textureLoad(grad_sdf, gid + offsets_unit[4]).xyz,
-        textureLoad(grad_sdf, gid + offsets_unit[5]).xyz,
-        textureLoad(grad_sdf, gid + offsets_unit[6]).xyz,
-        textureLoad(grad_sdf, gid + offsets_unit[7]).xyz,
+        level_and_normals[0].yzw,
+        level_and_normals[1].yzw,
+        level_and_normals[2].yzw,
+        level_and_normals[3].yzw,
+        level_and_normals[4].yzw,
+        level_and_normals[5].yzw,
+        level_and_normals[6].yzw,
+        level_and_normals[7].yzw,
     );
 
     let lut_idx = cube_levels_to_idx(cube_levels);

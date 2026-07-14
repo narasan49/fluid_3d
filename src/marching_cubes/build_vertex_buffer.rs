@@ -47,11 +47,9 @@ pub struct BuildVertexBufferResource {
     pub vertices: Handle<ShaderBuffer>,
     #[storage(1, visibility(compute))]
     pub indirect_args: Handle<ShaderBuffer>,
-    #[storage_texture(2, image_format = R32Float, access = ReadOnly, dimension = "3d")]
-    pub sdf: Handle<Image>,
-    #[storage_texture(3, image_format = Rgba16Snorm, access = ReadOnly, dimension = "3d")]
+    #[storage_texture(2, image_format = Rgba16Float, access = ReadOnly, dimension = "3d")]
     pub grad_sdf: Handle<Image>,
-    #[storage(4, read_only, visibility(compute))]
+    #[storage(3, read_only, visibility(compute))]
     pub lookup_table: Handle<ShaderBuffer>,
 }
 
