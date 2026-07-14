@@ -3,7 +3,7 @@
 
 @group(0) @binding(0) var div: texture_storage_3d<r32float, read>;
 @group(0) @binding(1) var levelset_air0: texture_storage_3d<r32float, read>;
-@group(0) @binding(2) var fluid_fraction: texture_storage_3d<rgba16float, read>;
+@group(0) @binding(2) var non_solid_fraction: texture_storage_3d<rgba16float, read>;
 @group(0) @binding(3) var p: texture_storage_3d<r32float, read_write>;
 @group(0) @binding(4) var<uniform> dx_scale: f32;
 
@@ -47,7 +47,7 @@ fn update_pressure(
         return 0.0;
     }
 
-    let f = load_area_fraction(fluid_fraction, idx);
+    let f = load_area_fraction(non_solid_fraction, idx);
     if fully_solid(f) {
         return 0.0;
     }

@@ -1,11 +1,11 @@
 @group(0) @binding(0) var r: texture_storage_3d<r32float, read>;
 @group(0) @binding(1) var levelset_air: texture_storage_3d<r32float, read>;
-@group(0) @binding(2) var fluid_fraction: texture_storage_3d<rgba16float, read>;
+@group(0) @binding(2) var non_solid_fraction: texture_storage_3d<rgba16float, read>;
 
 // restriction先の低解像度テクスチャ
 @group(0) @binding(3) var b_low: texture_storage_3d<r32float, write>;
 @group(0) @binding(4) var levelset_air_low: texture_storage_3d<r32float, write>;
-@group(0) @binding(5) var fluid_fraction_low: texture_storage_3d<rgba16float, write>;
+@group(0) @binding(5) var non_solid_fraction_low: texture_storage_3d<rgba16float, write>;
 @group(0) @binding(6) var x_low: texture_storage_3d<r32float, write>;
 
 @compute @workgroup_size(8, 8, 4)
@@ -60,16 +60,16 @@ fn restriction(
         textureStore(x_low, gid, vec4f(0.0));
     }
 
-    let dim_fraction = textureDimensions(fluid_fraction_low);
+    let dim_fraction = textureDimensions(non_solid_fraction_low);
     if all(gid < dim_fraction) {
         let fractions = array<vec3f, 7>(
-            textureLoad(fluid_fraction, 2 * gid + offsets[0]).xyz,
-            textureLoad(fluid_fraction, 2 * gid + offsets[1]).xyz,
-            textureLoad(fluid_fraction, 2 * gid + offsets[2]).xyz,
-            textureLoad(fluid_fraction, 2 * gid + offsets[3]).xyz,
-            textureLoad(fluid_fraction, 2 * gid + offsets[4]).xyz,
-            textureLoad(fluid_fraction, 2 * gid + offsets[5]).xyz,
-            textureLoad(fluid_fraction, 2 * gid + offsets[6]).xyz,
+            textureLoad(non_solid_fraction, 2 * gid + offsets[0]).xyz,
+            textureLoad(non_solid_fraction, 2 * gid + offsets[1]).xyz,
+            textureLoad(non_solid_fraction, 2 * gid + offsets[2]).xyz,
+            textureLoad(non_solid_fraction, 2 * gid + offsets[3]).xyz,
+            textureLoad(non_solid_fraction, 2 * gid + offsets[4]).xyz,
+            textureLoad(non_solid_fraction, 2 * gid + offsets[5]).xyz,
+            textureLoad(non_solid_fraction, 2 * gid + offsets[6]).xyz,
         );
 
         let f_low = vec3f(
@@ -78,6 +78,6 @@ fn restriction(
             0.25 * (fractions[0].z + fractions[1].z + fractions[2].z + fractions[3].z),
         );
 
-        textureStore(fluid_fraction_low, gid, vec4f(f_low, 0.0));
+        textureStore(non_solid_fraction_low, gid, vec4f(f_low, 0.0));
     }
 }

@@ -3,7 +3,7 @@
 
 @group(0) @binding(0) var u1: texture_storage_3d<rgba16float, read_write>;
 @group(0) @binding(1) var levelset_air0: texture_storage_3d<r32float, read>;
-@group(0) @binding(2) var fluid_fraction: texture_storage_3d<rgba16float, read>;
+@group(0) @binding(2) var non_solid_fraction: texture_storage_3d<rgba16float, read>;
 
 @group(1) @binding(0) var<uniform> fluid_uniform: FluidUniform;
 
@@ -24,7 +24,7 @@ fn apply_forces(
         return;
     }
 
-    let f = load_area_fraction(fluid_fraction, vec3i(gid));
+    let f = load_area_fraction(non_solid_fraction, vec3i(gid));
     if fully_solid(f) {
         textureStore(u1, gid, vec4f(0.0));
         return;

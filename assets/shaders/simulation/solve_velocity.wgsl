@@ -4,7 +4,7 @@
 @group(0) @binding(1) var v_mac: texture_storage_3d<r16float, read_write>;
 @group(0) @binding(2) var w_mac: texture_storage_3d<r16float, read_write>;
 @group(0) @binding(3) var p: texture_storage_3d<r32float, read>;
-@group(0) @binding(4) var fluid_fraction: texture_storage_3d<rgba16float, read>;
+@group(0) @binding(4) var non_solid_fraction: texture_storage_3d<rgba16float, read>;
 @group(0) @binding(5) var u_solid: texture_storage_3d<rgba16float, read>;
 @group(0) @binding(6) var levelset_air0: texture_storage_3d<r32float, read>;
 
@@ -26,7 +26,7 @@ fn solve_velocity(
     }
     let factor = fluid_uniform.dt / (fluid_uniform.dx * fluid_uniform.rho);
 
-    let f = textureLoad(fluid_fraction, gid).xyz;
+    let f = textureLoad(non_solid_fraction, gid).xyz;
     if all(gid < (dim + X)) {
         if f.x == 0.0 {
             let u_solid_plus = textureLoad(u_solid, gid).x;

@@ -68,7 +68,7 @@ pub struct MultigridProjectionResources {
     x: Vec<Handle<Image>>,
     b: Vec<Handle<Image>>,
     levelset: Vec<Handle<Image>>,
-    fluid_fraction: Vec<Handle<Image>>,
+    non_solid_fraction: Vec<Handle<Image>>,
     residual: Vec<Handle<Image>>,
 }
 
@@ -381,13 +381,13 @@ pub fn setup_multigrid_resources(
     let mut x = Vec::<Handle<Image>>::with_capacity(num_levels);
     let mut b = Vec::<Handle<Image>>::with_capacity(num_levels);
     let mut levelset = Vec::<Handle<Image>>::with_capacity(num_levels);
-    let mut fluid_fraction = Vec::<Handle<Image>>::with_capacity(num_levels);
+    let mut non_solid_fraction = Vec::<Handle<Image>>::with_capacity(num_levels);
     let mut residual = Vec::<Handle<Image>>::with_capacity(num_levels);
 
     x.push(resources.p.clone());
     b.push(resources.div.clone());
     levelset.push(resources.levelset_air0.clone());
-    fluid_fraction.push(resources.fluid_fraction.clone());
+    non_solid_fraction.push(resources.non_solid_fraction.clone());
     residual.push(new_texture_storage_3d(
         images,
         resolution,
@@ -415,7 +415,7 @@ pub fn setup_multigrid_resources(
             TextureFormat::R32Float,
         ));
 
-        fluid_fraction.push(new_texture_storage_3d(
+        non_solid_fraction.push(new_texture_storage_3d(
             images,
             resolution,
             TextureFormat::Rgba16Float,
@@ -433,7 +433,7 @@ pub fn setup_multigrid_resources(
             x,
             b,
             levelset,
-            fluid_fraction,
+            non_solid_fraction,
             residual,
         },
         MultigridNumLevels(num_levels),
@@ -464,7 +464,7 @@ fn prepare_bind_groups(
             dx_scale_buffer.write_buffer(&render_device, &render_queue);
             let dx_scale = dx_scale_buffer.binding().unwrap();
             let b = gpu_images.get(&resources.b[i]).unwrap();
-            let fluid_fraction = gpu_images.get(&resources.fluid_fraction[i]).unwrap();
+            let non_solid_fraction = gpu_images.get(&resources.non_solid_fraction[i]).unwrap();
             let levelset = gpu_images.get(&resources.levelset[i]).unwrap();
             let residual = gpu_images.get(&resources.residual[i]).unwrap();
             let x = gpu_images.get(&resources.x[i]).unwrap();
@@ -474,7 +474,7 @@ fn prepare_bind_groups(
                 &BindGroupEntries::sequential((
                     &b.texture_view,
                     &levelset.texture_view,
-                    &fluid_fraction.texture_view,
+                    &non_solid_fraction.texture_view,
                     &x.texture_view,
                     dx_scale.clone(),
                 )),
@@ -490,7 +490,7 @@ fn prepare_bind_groups(
                 &BindGroupEntries::sequential((
                     &b.texture_view,
                     &levelset.texture_view,
-                    &fluid_fraction.texture_view,
+                    &non_solid_fraction.texture_view,
                     &x.texture_view,
                     &residual.texture_view,
                     dx_scale,
@@ -499,7 +499,9 @@ fn prepare_bind_groups(
 
             let b_plus = gpu_images.get(&resources.b[i + 1]).unwrap();
             let levelset_plus = gpu_images.get(&resources.levelset[i + 1]).unwrap();
-            let fluid_fraction_plus = gpu_images.get(&resources.fluid_fraction[i + 1]).unwrap();
+            let non_solid_fraction_plus = gpu_images
+                .get(&resources.non_solid_fraction[i + 1])
+                .unwrap();
             let x_plus = gpu_images.get(&resources.x[i + 1]).unwrap();
 
             restriction_bind_groups.push(render_device.create_bind_group(
@@ -508,10 +510,10 @@ fn prepare_bind_groups(
                 &BindGroupEntries::sequential((
                     &residual.texture_view,
                     &levelset.texture_view,
-                    &fluid_fraction.texture_view,
+                    &non_solid_fraction.texture_view,
                     &b_plus.texture_view,
                     &levelset_plus.texture_view,
-                    &fluid_fraction_plus.texture_view,
+                    &non_solid_fraction_plus.texture_view,
                     &x_plus.texture_view,
                 )),
             ));

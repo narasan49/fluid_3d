@@ -30,14 +30,14 @@ pub struct UpdateFluidFractionResource {
     #[storage_texture(0, image_format = R32Float, dimension = "3d", access = ReadOnly)]
     pub levelset_solid: Handle<Image>,
     #[storage_texture(1, image_format = Rgba16Float, dimension = "3d", access = WriteOnly)]
-    pub fluid_fraction: Handle<Image>,
+    pub non_solid_fraction: Handle<Image>,
 }
 
 impl UpdateFluidFractionResource {
     pub fn new(resources: &FluidResources) -> Self {
         Self {
             levelset_solid: resources.levelset_solid.clone(),
-            fluid_fraction: resources.fluid_fraction.clone(),
+            non_solid_fraction: resources.non_solid_fraction.clone(),
         }
     }
 }
