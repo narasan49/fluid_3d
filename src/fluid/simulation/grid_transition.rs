@@ -35,8 +35,8 @@ pub struct MacToCollocatedResource {
     pub w_mac: Handle<Image>,
     #[storage_texture(3, image_format = Rgba16Float, dimension = "3d", access = WriteOnly)]
     pub u0: Handle<Image>,
-    #[storage_texture(4, image_format = R32Float, dimension = "3d", access = ReadOnly)]
-    pub levelset_air0: Handle<Image>,
+    #[storage_texture(4, image_format = Rgba16Float, dimension = "3d", access = ReadOnly)]
+    pub non_fluid_fraction: Handle<Image>,
 }
 
 impl MacToCollocatedResource {
@@ -46,7 +46,7 @@ impl MacToCollocatedResource {
             v_mac: resources.v_mac.clone(),
             w_mac: resources.w_mac.clone(),
             u0: resources.u0.clone(),
-            levelset_air0: resources.levelset_air0.clone(),
+            non_fluid_fraction: resources.non_fluid_fraction.clone(),
         }
     }
 }
