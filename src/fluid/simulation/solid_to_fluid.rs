@@ -1,6 +1,4 @@
-use avian3d::{
-    collision::collider::Collider, dynamics::rigid_body::LinearVelocity, parry::shape::ShapeType,
-};
+use avian3d::dynamics::rigid_body::LinearVelocity;
 use bevy::{
     material::descriptor::BindGroupLayoutDescriptor,
     prelude::*,
@@ -67,6 +65,13 @@ pub struct SolidBodyBufferBindGroupLayout(pub BindGroupLayoutDescriptor);
 #[derive(Resource)]
 pub struct SolidBodyBufferBindGroup(pub BindGroup);
 
+#[derive(Component, Debug)]
+pub enum SolidShapeOnFluid {
+    Capsule(Capsule3d),
+    Cuboid(Cuboid),
+    TriangularPrism(Extrusion<Triangle2d>),
+}
+
 #[derive(ShaderType, Default)]
 pub struct SolidBody {
     pub shape: ShapeVariant,
@@ -78,29 +83,51 @@ pub struct SolidBody {
 #[derive(ShaderType, Default)]
 pub struct ShapeVariant {
     pub shape_type: u32,
-    pub values: [f32; 4],
+    pub values: [f32; 8],
 }
 
-impl ShapeVariant {
-    fn from_capsule_variant(capsule: &avian3d::parry::shape::Capsule) -> Self {
-        // y-軸に沿ったCapsuleを前提にする。
-        // ToDo: 一般のline segment
-        let half_length = 0.5 * (capsule.segment.a.y - capsule.segment.b.y);
-        Self {
-            shape_type: 1,
-            values: [half_length, capsule.radius, 0.0, 0.0],
-        }
-    }
-
-    fn from_cuboid_variant(cuboid: &avian3d::parry::shape::Cuboid) -> Self {
-        Self {
-            shape_type: 2,
-            values: [
-                cuboid.half_extents.x,
-                cuboid.half_extents.y,
-                cuboid.half_extents.z,
-                0.0,
-            ],
+impl From<&SolidShapeOnFluid> for ShapeVariant {
+    fn from(value: &SolidShapeOnFluid) -> Self {
+        match value {
+            SolidShapeOnFluid::Capsule(capsule3d) => Self {
+                shape_type: 1,
+                values: [
+                    capsule3d.radius,
+                    capsule3d.half_length,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                ],
+            },
+            SolidShapeOnFluid::Cuboid(cuboid) => Self {
+                shape_type: 2,
+                values: [
+                    cuboid.half_size.x,
+                    cuboid.half_size.y,
+                    cuboid.half_size.z,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                ],
+            },
+            SolidShapeOnFluid::TriangularPrism(triangular_prism) => Self {
+                shape_type: 3,
+                values: [
+                    triangular_prism.base_shape.vertices[0].x,
+                    triangular_prism.base_shape.vertices[0].y,
+                    triangular_prism.base_shape.vertices[1].x,
+                    triangular_prism.base_shape.vertices[1].y,
+                    triangular_prism.base_shape.vertices[2].x,
+                    triangular_prism.base_shape.vertices[2].y,
+                    triangular_prism.half_depth,
+                    0.0,
+                ],
+            },
         }
     }
 }
@@ -115,39 +142,20 @@ fn init_buffer(mut commands: Commands, mut buffers: ResMut<Assets<ShaderBuffer>>
 }
 
 fn update_solid_body_buffer(
-    query: Query<(&GlobalTransform, &Collider, &LinearVelocity)>,
+    query: Query<(&GlobalTransform, &SolidShapeOnFluid, &LinearVelocity)>,
     mut solid_body_buffer: ResMut<SolidBodyBuffer>,
     mut buffers: ResMut<Assets<ShaderBuffer>>,
 ) {
     let solid_bodies = query
         .iter()
-        .filter_map(|(transform, collider, velocity)| {
-            let shape = collider.shape().shape_type();
+        .map(|(transform, shape, velocity)| {
             let transform = transform.to_matrix();
             let inv_transform = transform.inverse();
-            match shape {
-                ShapeType::Cuboid => {
-                    let cuboid = collider.shape().as_cuboid().unwrap();
-                    Some(SolidBody {
-                        shape: ShapeVariant::from_cuboid_variant(cuboid),
-                        linear_velocity: velocity.0,
-                        transform: transform,
-                        inv_transform,
-                    })
-                }
-                ShapeType::Capsule => {
-                    let capsule = collider.shape().as_capsule().unwrap();
-                    Some(SolidBody {
-                        shape: ShapeVariant::from_capsule_variant(capsule),
-                        linear_velocity: velocity.0,
-                        transform,
-                        inv_transform,
-                    })
-                }
-                _ => {
-                    warn!("shape {:?} is not implemented", shape);
-                    None
-                }
+            SolidBody {
+                shape: shape.into(),
+                linear_velocity: velocity.0,
+                transform: transform,
+                inv_transform,
             }
         })
         .collect::<Vec<_>>();

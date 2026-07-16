@@ -18,7 +18,10 @@ use bevy::{
 };
 
 use crate::{
-    fluid::{Fluid3d, Fluid3dPlugin, GridLength, resources::FluidResources},
+    fluid::{
+        Fluid3d, Fluid3dPlugin, GridLength, resources::FluidResources,
+        simulation::solid_to_fluid::SolidShapeOnFluid,
+    },
     game::{
         character_controller::{CharacterController, CharacterControllerPlugin},
         solid_body_motion::{MovingObject, update_moving_object},
@@ -80,14 +83,33 @@ fn setup_scene(
         Transform::from_translation(Vec3::new(0.0, 0.15, 0.0)),
     ));
 
+    let material_terrain = materials.add(Color::srgb(0.8, 0.8, 0.8));
+    // 上面をy=0にする
     let ground_shape = Cuboid::new(2.0, 0.1, 2.0);
-
     commands.spawn((
         Name::new("Ground"),
         Mesh3d(meshes.add(ground_shape)),
-        MeshMaterial3d(materials.add(Color::srgb(0.8, 0.8, 0.8))),
+        MeshMaterial3d(material_terrain.clone()),
         ground_shape.collider(),
-        Transform::from_translation(Vec3::new(0.0, -0.4, 0.0)),
+        SolidShapeOnFluid::Cuboid(ground_shape),
+        Transform::default().with_translation(Vec3::new(0.0, -ground_shape.half_size.y, 0.0)),
+    ));
+
+    // Slope
+    let slope = Extrusion::<Triangle2d>::new(
+        Triangle2d::new(
+            Vec2::new(0.0, 0.0),
+            Vec2::new(1.0, 0.0),
+            Vec2::new(1.0, 0.6),
+        ),
+        1.0,
+    );
+
+    commands.spawn((
+        Mesh3d(meshes.add(slope)),
+        SolidShapeOnFluid::TriangularPrism(slope),
+        MeshMaterial3d(material_terrain.clone()),
+        RigidBody::Kinematic,
     ));
 
     commands.spawn((
@@ -99,10 +121,11 @@ fn setup_scene(
     let capsule = Capsule3d::new(0.05, 0.1);
     commands.spawn((
         Name::new("PlayerCapsule"),
-        Transform::from_xyz(0.0, -0.25, 0.5),
+        Transform::from_xyz(0.0, capsule.half_length + capsule.radius, 0.5),
         Mesh3d(meshes.add(capsule)),
         MeshMaterial3d(materials.add(Color::srgb(0.8, 0.8, 0.0))),
         capsule.collider(),
+        SolidShapeOnFluid::Capsule(capsule),
         CharacterController,
         RigidBody::Kinematic,
     ));
@@ -110,10 +133,11 @@ fn setup_scene(
     let cube = Cuboid::from_size(Vec3::new(0.2, 0.5, 0.2));
     commands.spawn((
         Name::new("Cube"),
-        Transform::default().with_translation(Vec3::new(0.1, -0.15, -0.2)),
+        Transform::default().with_translation(Vec3::new(0.1, cube.half_size.y, -0.2)),
         Mesh3d(meshes.add(cube)),
         MeshMaterial3d(materials.add(Color::srgb(0.8, 0.8, 0.8))),
         cube.collider(),
+        SolidShapeOnFluid::Cuboid(cube),
         RigidBody::Kinematic,
         MovingObject,
     ));
