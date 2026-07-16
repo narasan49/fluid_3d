@@ -24,6 +24,7 @@ impl Plugin for CharacterControllerPlugin {
 
 const CHARACTER_ACCELERATION: f32 = 20.0;
 const DAMPING_RATE: f32 = 0.8;
+const JUMP_SPEED: f32 = 2.0;
 
 #[derive(Component)]
 pub struct CharacterController;
@@ -33,7 +34,7 @@ pub struct Grounded;
 
 fn handle_character_input(
     time: Res<Time>,
-    mut query: Query<&mut LinearVelocity, With<CharacterController>>,
+    mut query: Query<(&mut LinearVelocity, Has<Grounded>), With<CharacterController>>,
     input: Res<ButtonInput<KeyCode>>,
 ) {
     let mut direction = Vec3::ZERO;
@@ -52,9 +53,16 @@ fn handle_character_input(
     if direction == Vec3::ZERO {
         return;
     }
-    for mut linear_velocity in &mut query {
+    for (mut linear_velocity, grounded) in &mut query {
         let delta = CHARACTER_ACCELERATION * direction.normalize() * time.delta_secs();
         linear_velocity.0 += delta;
+
+        // Jump
+        if input.all_pressed([KeyCode::Space]) {
+            if grounded {
+                linear_velocity.y += JUMP_SPEED;
+            }
+        }
     }
 }
 
