@@ -1,6 +1,7 @@
 mod fluid;
 mod game;
 mod marching_cubes;
+pub mod rigid_body;
 
 use avian3d::{
     PhysicsPlugins,
@@ -27,6 +28,7 @@ use crate::{
         solid_body_motion::{MovingObject, update_moving_object},
     },
     marching_cubes::{MarchingCubes, MarchingCubesPlugin},
+    rigid_body::custom_collider::TriangularPrism,
 };
 
 const LENGTH_UNIT: f32 = 64.0;
@@ -108,6 +110,7 @@ fn setup_scene(
     commands.spawn((
         Mesh3d(meshes.add(slope)),
         SolidShapeOnFluid::TriangularPrism(slope),
+        TriangularPrism::from(slope).collider(),
         MeshMaterial3d(material_terrain.clone()),
         RigidBody::Kinematic,
     ));
