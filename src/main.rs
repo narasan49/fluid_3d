@@ -78,14 +78,18 @@ fn setup_scene(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    grid_length: Res<GridLength>,
 ) {
+    // 流体。底面をy=0に設定する。
+    let resolution = UVec3::new(128, 32, 64);
+    let fluid_half_size = 0.5 * resolution.as_vec3() * (grid_length.0 as f32);
     commands.spawn((
         Fluid3d {
-            resolution: UVec3::new(64, 64, 64),
+            resolution,
             rho: 997.0,
-            gravity: -Vec3::Y * 9.8,
+            gravity: 9.8 * Vec3::NEG_Y,
         },
-        Transform::from_translation(Vec3::new(0.0, 0.15, 0.0)),
+        Transform::from_translation(Vec3::new(0.0, fluid_half_size.y, 0.0)),
     ));
 
     let material_terrain = materials.add(Color::srgb(0.8, 0.8, 0.8));
@@ -98,24 +102,38 @@ fn setup_scene(
         ground_shape.collider(),
         SolidShapeOnFluid::Cuboid(ground_shape),
         Transform::default().with_translation(Vec3::new(0.0, -ground_shape.half_size.y, 0.0)),
+        RigidBody::Static,
     ));
 
-    // Slope
     let slope = Extrusion::<Triangle2d>::new(
         Triangle2d::new(
             Vec2::new(0.0, 0.0),
             Vec2::new(1.0, 0.0),
-            Vec2::new(1.0, 0.6),
+            Vec2::new(1.0, 0.4),
         ),
         1.0,
     );
-
     commands.spawn((
+        Name::new("Slope"),
         Mesh3d(meshes.add(slope)),
         SolidShapeOnFluid::TriangularPrism(slope),
         TriangularPrism::from(slope).collider(),
         MeshMaterial3d(material_terrain.clone()),
         RigidBody::Kinematic,
+    ));
+
+    let second_floor = Cuboid::new(2.0, 0.1, 0.5);
+    commands.spawn((
+        Name::new("2ndFloor"),
+        Mesh3d(meshes.add(second_floor)),
+        MeshMaterial3d(material_terrain.clone()),
+        second_floor.collider(),
+        Transform::default().with_translation(Vec3::new(
+            0.0,
+            -second_floor.half_size.y + 0.4,
+            -1.0,
+        )),
+        RigidBody::Static,
     ));
 
     commands.spawn((
@@ -127,7 +145,7 @@ fn setup_scene(
     let capsule = Capsule3d::new(0.05, 0.1);
     commands.spawn((
         Name::new("PlayerCapsule"),
-        Transform::from_xyz(0.0, capsule.half_length + capsule.radius, 0.5),
+        Transform::from_xyz(0.0, capsule.half_length + capsule.radius + 10.0, 0.5),
         Mesh3d(meshes.add(capsule)),
         MeshMaterial3d(materials.add(Color::srgb(0.8, 0.8, 0.0))),
         capsule.collider(),
@@ -154,11 +172,14 @@ fn setup_scene(
 fn setup_fluid_render(
     mut commands: Commands,
     query: Query<(Entity, &FluidResources, &Fluid3d), Added<FluidResources>>,
+    grid_length: Res<GridLength>,
 ) {
     for (entity, resources, fluid) in &query {
+        let half_size = 0.5 * fluid.resolution.as_vec3() * (grid_length.0 as f32);
         commands.entity(entity).insert(MarchingCubes {
             grad_sdf: resources.levelset_and_grad_air.clone(),
             resolution: fluid.resolution,
+            half_size,
         });
     }
 }
