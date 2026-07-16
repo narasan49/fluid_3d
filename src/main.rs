@@ -6,7 +6,10 @@ pub mod rigid_body;
 use avian3d::{
     PhysicsPlugins,
     collision::collider::IntoCollider,
-    dynamics::{integrator::Gravity, rigid_body::RigidBody},
+    dynamics::{
+        integrator::Gravity,
+        rigid_body::{LockedAxes, RigidBody},
+    },
 };
 use bevy::{
     camera_controller::free_camera::{FreeCamera, FreeCameraPlugin},
@@ -130,7 +133,8 @@ fn setup_scene(
         capsule.collider(),
         SolidShapeOnFluid::Capsule(capsule),
         CharacterController,
-        RigidBody::Kinematic,
+        RigidBody::Dynamic,
+        LockedAxes::ROTATION_LOCKED,
     ));
 
     let cube = Cuboid::from_size(Vec3::new(0.2, 0.5, 0.2));
