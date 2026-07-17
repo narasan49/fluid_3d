@@ -3,6 +3,7 @@ pub mod advect_velocity;
 pub mod apply_forces;
 pub mod divergence;
 pub mod extrapolate_velocity;
+pub mod fluid_source;
 pub mod fluid_uniform;
 pub mod grid_transition;
 pub mod initialize;
