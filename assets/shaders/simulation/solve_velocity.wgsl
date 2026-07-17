@@ -7,6 +7,7 @@
 @group(0) @binding(4) var non_solid_fraction: texture_storage_3d<rgba16float, read>;
 @group(0) @binding(5) var u_solid: texture_storage_3d<rgba16float, read>;
 @group(0) @binding(6) var levelset_air0: texture_storage_3d<r32float, read>;
+@group(0) @binding(7) var non_fluid_fraction: texture_storage_3d<rgba16float, read>;
 
 @group(1) @binding(0) var<uniform> fluid_uniform: FluidUniform;
 
@@ -64,8 +65,8 @@ fn solve_u(
 ) {
     let level_plus = textureLoad(levelset_air0, idx).x;
     let level_minus = textureLoad(levelset_air0, idx - X).x;
-    let level_edge = 0.5 * (level_plus + level_minus);
-    if level_edge >= 0.0 || (level_plus >= 0.0 && level_minus >= 0.0) {
+    let f = textureLoad(non_fluid_fraction, idx).x;
+    if f == 1.0 {
         // MACグリッド上のu_mac[idx]の位置(i - 0.5, j, k)が空気なら速度は0
         textureStore(u_mac, idx, vec4f(0.0));
         return;
@@ -82,8 +83,8 @@ fn solve_v(
 ) {
     let level_plus = textureLoad(levelset_air0, idx).x;
     let level_minus = textureLoad(levelset_air0, idx - Y).x;
-    let level_edge = 0.5 * (level_plus + level_minus);
-    if level_edge >= 0.0 || (level_plus >= 0.0 && level_minus >= 0.0){
+    let f = textureLoad(non_fluid_fraction, idx).y;
+    if f == 1.0 {
         // MACグリッド上のv_mac[idx]の位置(i, j - 0.5, k)が空気なら速度は0
         textureStore(v_mac, idx, vec4f(0.0));
         return;
@@ -101,7 +102,8 @@ fn solve_w(
     let level_plus = textureLoad(levelset_air0, idx).x;
     let level_minus = textureLoad(levelset_air0, idx - Z).x;
     let level_edge = 0.5 * (level_plus + level_minus);
-    if level_edge >= 0.0 || (level_plus >= 0.0 && level_minus >= 0.0){
+    let f = textureLoad(non_fluid_fraction, idx).z;
+    if f == 1.0 {
         // MACグリッド上のw_mac[idx]の位置(i, j, k - 0.5)が空気なら速度は0
         textureStore(w_mac, idx, vec4f(0.0));
         return;

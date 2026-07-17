@@ -42,6 +42,8 @@ pub struct SolveVelocityResource {
     pub u_solid: Handle<Image>,
     #[storage_texture(6, image_format = R32Float, dimension = "3d", access = ReadOnly)]
     pub levelset_air0: Handle<Image>,
+    #[storage_texture(7, image_format = Rgba16Float, dimension = "3d", access = ReadOnly)]
+    pub non_fluid_fraction: Handle<Image>,
 }
 
 impl SolveVelocityResource {
@@ -54,6 +56,7 @@ impl SolveVelocityResource {
             non_solid_fraction: resources.non_solid_fraction.clone(),
             u_solid: resources.u_solid.clone(),
             levelset_air0: resources.levelset_air0.clone(),
+            non_fluid_fraction: resources.non_fluid_fraction.clone(),
         }
     }
 }
