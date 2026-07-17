@@ -46,17 +46,23 @@ impl Plugin for ExtrapolateVelocityPlugin {
 
 #[derive(Component, ExtractComponent, Clone)]
 pub struct ExtrapolateVelocityResource {
-    pub u0: Handle<Image>,
-    pub levelset_air0: Handle<Image>,
-    pub velocity_fixed: [Handle<Image>; 2],
+    pub u_mac: Handle<Image>,
+    pub v_mac: Handle<Image>,
+    pub w_mac: Handle<Image>,
+    pub non_fluid_fraction: Handle<Image>,
+    pub velocity_fixed: [Handle<Image>; 3],
+    pub velocity_fixed1: Handle<Image>,
 }
 
 impl ExtrapolateVelocityResource {
     pub fn new(resources: &FluidResources) -> Self {
         Self {
-            u0: resources.u0.clone(),
-            levelset_air0: resources.levelset_air0.clone(),
+            u_mac: resources.u_mac.clone(),
+            v_mac: resources.v_mac.clone(),
+            w_mac: resources.w_mac.clone(),
+            non_fluid_fraction: resources.non_fluid_fraction.clone(),
             velocity_fixed: resources.velocity_fixed.clone(),
+            velocity_fixed1: resources.velocity_fixed1.clone(),
         }
     }
 }
@@ -84,7 +90,10 @@ impl ExtrapolateVelocityPipeline {
         workgroup_size: UVec3,
     ) {
         pass.push_debug_group("extrapolate_velocity");
-        let workgroups = num_workgroups(resolution, workgroup_size);
+        let workgroups = num_workgroups(resolution + UVec3::ONE, workgroup_size);
+        let workgroups_x = num_workgroups(resolution + UVec3::X, workgroup_size);
+        let workgroups_y = num_workgroups(resolution + UVec3::Y, workgroup_size);
+        let workgroups_z = num_workgroups(resolution + UVec3::Z, workgroup_size);
         let initialize_pipeline = pipeline_cache
             .get_compute_pipeline(self.initialize_pipeline)
             .unwrap();
@@ -98,11 +107,25 @@ impl ExtrapolateVelocityPipeline {
 
         pass.set_pipeline(update_pipeline);
         for _ in 0..3 {
-            pass.set_bind_group(0, &bind_groups.update_bind_groups[0], &[]);
-            pass.dispatch_workgroups(workgroups.x, workgroups.y, workgroups.z);
+            pass.set_bind_group(0, &bind_groups.update_u_bind_groups[0], &[]);
+            pass.dispatch_workgroups(workgroups_x.x, workgroups_x.y, workgroups_x.z);
 
-            pass.set_bind_group(0, &bind_groups.update_bind_groups[1], &[]);
-            pass.dispatch_workgroups(workgroups.x, workgroups.y, workgroups.z);
+            pass.set_bind_group(0, &bind_groups.update_u_bind_groups[1], &[]);
+            pass.dispatch_workgroups(workgroups_x.x, workgroups_x.y, workgroups_x.z);
+        }
+        for _ in 0..3 {
+            pass.set_bind_group(0, &bind_groups.update_v_bind_groups[0], &[]);
+            pass.dispatch_workgroups(workgroups_y.x, workgroups_y.y, workgroups_y.z);
+
+            pass.set_bind_group(0, &bind_groups.update_v_bind_groups[1], &[]);
+            pass.dispatch_workgroups(workgroups_y.x, workgroups_y.y, workgroups_y.z);
+        }
+        for _ in 0..3 {
+            pass.set_bind_group(0, &bind_groups.update_w_bind_groups[0], &[]);
+            pass.dispatch_workgroups(workgroups_z.x, workgroups_z.y, workgroups_z.z);
+
+            pass.set_bind_group(0, &bind_groups.update_w_bind_groups[1], &[]);
+            pass.dispatch_workgroups(workgroups_z.x, workgroups_z.y, workgroups_z.z);
         }
 
         pass.pop_debug_group();
@@ -119,7 +142,9 @@ impl FromWorld for ExtrapolateVelocityPipeline {
             &BindGroupLayoutEntries::sequential(
                 ShaderStages::COMPUTE,
                 (
-                    texture_storage_3d(TextureFormat::R32Float, StorageTextureAccess::ReadOnly),
+                    texture_storage_3d(TextureFormat::Rgba16Float, StorageTextureAccess::ReadOnly),
+                    texture_storage_3d(TextureFormat::R8Uint, StorageTextureAccess::WriteOnly),
+                    texture_storage_3d(TextureFormat::R8Uint, StorageTextureAccess::WriteOnly),
                     texture_storage_3d(TextureFormat::R8Uint, StorageTextureAccess::WriteOnly),
                 ),
             ),
@@ -130,7 +155,7 @@ impl FromWorld for ExtrapolateVelocityPipeline {
             &BindGroupLayoutEntries::sequential(
                 ShaderStages::COMPUTE,
                 (
-                    texture_storage_3d(TextureFormat::Rgba16Float, StorageTextureAccess::ReadWrite),
+                    texture_storage_3d(TextureFormat::R16Float, StorageTextureAccess::ReadWrite),
                     texture_storage_3d(TextureFormat::R8Uint, StorageTextureAccess::ReadOnly),
                     texture_storage_3d(TextureFormat::R8Uint, StorageTextureAccess::WriteOnly),
                 ),
@@ -167,7 +192,9 @@ impl FromWorld for ExtrapolateVelocityPipeline {
 #[derive(Component)]
 pub struct ExtrapolateVelocityBindGroups {
     initialize_bind_group: BindGroup,
-    update_bind_groups: Vec<BindGroup>,
+    update_u_bind_groups: Vec<BindGroup>,
+    update_v_bind_groups: Vec<BindGroup>,
+    update_w_bind_groups: Vec<BindGroup>,
 }
 
 fn prepare_bind_groups(
@@ -179,37 +206,83 @@ fn prepare_bind_groups(
     pipeline: Res<ExtrapolateVelocityPipeline>,
 ) {
     for (entity, resource) in &query {
-        let u0 = gpu_images.get(&resource.u0).unwrap();
-        let levelset_air0 = gpu_images.get(&resource.levelset_air0).unwrap();
-        let velocity_fixed0 = gpu_images.get(&resource.velocity_fixed[0]).unwrap();
-        let velocity_fixed1 = gpu_images.get(&resource.velocity_fixed[1]).unwrap();
+        let u_mac = gpu_images.get(&resource.u_mac).unwrap();
+        let v_mac = gpu_images.get(&resource.v_mac).unwrap();
+        let w_mac = gpu_images.get(&resource.w_mac).unwrap();
+        let non_fluid_fraction = gpu_images.get(&resource.non_fluid_fraction).unwrap();
+        let u_fixed = gpu_images.get(&resource.velocity_fixed[0]).unwrap();
+        let v_fixed = gpu_images.get(&resource.velocity_fixed[1]).unwrap();
+        let w_fixed = gpu_images.get(&resource.velocity_fixed[2]).unwrap();
+        let velocity_fixed1 = gpu_images.get(&resource.velocity_fixed1).unwrap();
 
         let initialize_bind_group = render_device.create_bind_group(
-            "extrapolate_velocity_initialize_bind_group_layout",
+            "extrapolate_velocity_initialize_bind_group",
             &pipeline_cache.get_bind_group_layout(&pipeline.initialize_bind_group_layout),
             &BindGroupEntries::sequential((
-                &levelset_air0.texture_view,
-                &velocity_fixed0.texture_view,
+                &non_fluid_fraction.texture_view,
+                &u_fixed.texture_view,
+                &v_fixed.texture_view,
+                &w_fixed.texture_view,
             )),
         );
 
-        let mut update_bind_groups = Vec::with_capacity(2);
-        update_bind_groups.push(render_device.create_bind_group(
-            "extrapolate_velocity_update_bind_group_layout_0",
+        let mut update_u_bind_groups = Vec::with_capacity(2);
+        update_u_bind_groups.push(render_device.create_bind_group(
+            "extrapolate_velocity_update_u_bind_group_0",
             &pipeline_cache.get_bind_group_layout(&pipeline.update_bind_group_layout),
             &BindGroupEntries::sequential((
-                &u0.texture_view,
-                &velocity_fixed0.texture_view,
+                &u_mac.texture_view,
+                &u_fixed.texture_view,
                 &velocity_fixed1.texture_view,
             )),
         ));
-        update_bind_groups.push(render_device.create_bind_group(
-            "extrapolate_velocity_update_bind_group_layout_1",
+        update_u_bind_groups.push(render_device.create_bind_group(
+            "extrapolate_velocity_update_u_bind_group_1",
             &pipeline_cache.get_bind_group_layout(&pipeline.update_bind_group_layout),
             &BindGroupEntries::sequential((
-                &u0.texture_view,
+                &u_mac.texture_view,
                 &velocity_fixed1.texture_view,
-                &velocity_fixed0.texture_view,
+                &u_fixed.texture_view,
+            )),
+        ));
+
+        let mut update_v_bind_groups = Vec::with_capacity(2);
+        update_v_bind_groups.push(render_device.create_bind_group(
+            "extrapolate_velocity_update_v_bind_group_0",
+            &pipeline_cache.get_bind_group_layout(&pipeline.update_bind_group_layout),
+            &BindGroupEntries::sequential((
+                &v_mac.texture_view,
+                &v_fixed.texture_view,
+                &velocity_fixed1.texture_view,
+            )),
+        ));
+        update_v_bind_groups.push(render_device.create_bind_group(
+            "extrapolate_velocity_update_v_bind_group_1",
+            &pipeline_cache.get_bind_group_layout(&pipeline.update_bind_group_layout),
+            &BindGroupEntries::sequential((
+                &v_mac.texture_view,
+                &velocity_fixed1.texture_view,
+                &v_fixed.texture_view,
+            )),
+        ));
+
+        let mut update_w_bind_groups = Vec::with_capacity(2);
+        update_w_bind_groups.push(render_device.create_bind_group(
+            "extrapolate_velocity_update_w_bind_group_0",
+            &pipeline_cache.get_bind_group_layout(&pipeline.update_bind_group_layout),
+            &BindGroupEntries::sequential((
+                &w_mac.texture_view,
+                &w_fixed.texture_view,
+                &velocity_fixed1.texture_view,
+            )),
+        ));
+        update_w_bind_groups.push(render_device.create_bind_group(
+            "extrapolate_velocity_update_w_bind_group_1",
+            &pipeline_cache.get_bind_group_layout(&pipeline.update_bind_group_layout),
+            &BindGroupEntries::sequential((
+                &w_mac.texture_view,
+                &velocity_fixed1.texture_view,
+                &w_fixed.texture_view,
             )),
         ));
 
@@ -217,7 +290,9 @@ fn prepare_bind_groups(
             .entity(entity)
             .insert(ExtrapolateVelocityBindGroups {
                 initialize_bind_group,
-                update_bind_groups,
+                update_u_bind_groups,
+                update_v_bind_groups,
+                update_w_bind_groups,
             });
     }
 }
