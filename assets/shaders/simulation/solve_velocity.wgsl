@@ -124,9 +124,9 @@ fn delta_velocity(
     var p_plus = textureLoad(p, idx_plus).x;
     var p_minus = textureLoad(p, idx_minus).x;
     if level_plus >= 0.0 && level_minus < 0.0 {
-        p_plus = p_minus * level_plus / level_minus;
+        p_plus = p_minus * level_plus / min(level_minus, -0.1);
     } else if level_plus < 0.0 && level_minus >= 0.0 {
-        p_minus = p_plus * level_minus / level_plus;
+        p_minus = p_plus * level_minus / min(level_plus, -0.1);
     }
 
     return scale * (p_plus - p_minus);

@@ -316,18 +316,18 @@ fn run_simulation(
                     WORKGROUP_SIZE,
                 );
 
-                pipelines.mac_to_collocated_pipeline.dispatch(
-                    &mut pass,
-                    &pipeline_cache,
-                    &bind_groups.mac_to_collocated_bind_group,
-                    fluid.resolution,
-                    WORKGROUP_SIZE,
-                );
-
                 pipelines.extrapolate_velocity_pipeline.dispatch(
                     &mut pass,
                     &pipeline_cache,
                     bind_groups.extrapolate_velocity_bind_groups,
+                    fluid.resolution,
+                    WORKGROUP_SIZE,
+                );
+
+                pipelines.mac_to_collocated_pipeline.dispatch(
+                    &mut pass,
+                    &pipeline_cache,
+                    &bind_groups.mac_to_collocated_bind_group,
                     fluid.resolution,
                     WORKGROUP_SIZE,
                 );

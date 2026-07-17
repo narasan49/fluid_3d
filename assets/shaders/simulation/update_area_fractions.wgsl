@@ -3,6 +3,9 @@
 @group(0) @binding(2) var non_solid_fraction: texture_storage_3d<rgba16float, write>;
 @group(0) @binding(3) var non_fluid_fraction: texture_storage_3d<rgba16float, write>;
 
+const EDGE_MINUS = 0u;
+const EDGE_PLUS = 1u;
+
 @compute @workgroup_size(8, 8, 4)
 fn update_area_fractions(
     @builtin(global_invocation_id) gid: vec3u,
@@ -12,10 +15,10 @@ fn update_area_fractions(
         return;
     }
 
-    let f_non_solid = area_fraction(levelset_solid, vec3i(gid) - vec3i(1), vec3i(dim));
+    let f_non_solid = area_fraction(levelset_solid, vec3i(gid) - vec3i(1), vec3i(dim), EDGE_MINUS);
     textureStore(non_solid_fraction, gid, vec4f(f_non_solid, 0.0));
 
-    let f_non_fluid = area_fraction(levelset_air0, vec3i(gid) - vec3i(1), vec3i(dim));
+    let f_non_fluid = area_fraction(levelset_air0, vec3i(gid) - vec3i(1), vec3i(dim), EDGE_PLUS);
     textureStore(non_fluid_fraction, gid, vec4f(f_non_fluid, 0.0));
 }
 
@@ -23,8 +26,9 @@ fn area_fraction(
     levelset: texture_storage_3d<r32float, read>,
     idx_min: vec3i,
     dim: vec3i,
+    edge_method: u32,
 ) -> vec3f {
-    let phi_vertices = levelset_vertices(levelset, idx_min, dim);
+    let phi_vertices = levelset_vertices(levelset, idx_min, dim, edge_method);
     // -(マイナス)X 面のarea fraction
     // ボクセルの頂点のインデックス (local_idx, global_idx)
     // 0, (i-1/2, j-1/2, k-1/2)
@@ -66,34 +70,35 @@ fn levelset_vertices(
     levelset: texture_storage_3d<r32float, read>,
     idx_min: vec3i,
     dim: vec3i,
+    edge_method: u32,
 ) -> array<f32, 7> {
     let phi_centers = array(
-        load_levelset(levelset, idx_min, dim),
-        load_levelset(levelset, idx_min + vec3i(1, 0, 0), dim),
-        load_levelset(levelset, idx_min + vec3i(2, 0, 0), dim),
-        load_levelset(levelset, idx_min + vec3i(0, 1, 0), dim),
-        load_levelset(levelset, idx_min + vec3i(1, 1, 0), dim),
-        load_levelset(levelset, idx_min + vec3i(2, 1, 0), dim),
-        load_levelset(levelset, idx_min + vec3i(0, 2, 0), dim),
-        load_levelset(levelset, idx_min + vec3i(1, 2, 0), dim),
-        load_levelset(levelset, idx_min + vec3i(2, 2, 0), dim),
-        load_levelset(levelset, idx_min + vec3i(0, 0, 1), dim),
-        load_levelset(levelset, idx_min + vec3i(1, 0, 1), dim),
-        load_levelset(levelset, idx_min + vec3i(2, 0, 1), dim),
-        load_levelset(levelset, idx_min + vec3i(0, 1, 1), dim),
-        load_levelset(levelset, idx_min + vec3i(1, 1, 1), dim),
-        load_levelset(levelset, idx_min + vec3i(2, 1, 1), dim),
-        load_levelset(levelset, idx_min + vec3i(0, 2, 1), dim),
-        load_levelset(levelset, idx_min + vec3i(1, 2, 1), dim),
-        load_levelset(levelset, idx_min + vec3i(2, 2, 1), dim),
-        load_levelset(levelset, idx_min + vec3i(0, 0, 2), dim),
-        load_levelset(levelset, idx_min + vec3i(1, 0, 2), dim),
-        load_levelset(levelset, idx_min + vec3i(2, 0, 2), dim),
-        load_levelset(levelset, idx_min + vec3i(0, 1, 2), dim),
-        load_levelset(levelset, idx_min + vec3i(1, 1, 2), dim),
-        load_levelset(levelset, idx_min + vec3i(2, 1, 2), dim),
-        load_levelset(levelset, idx_min + vec3i(0, 2, 2), dim),
-        load_levelset(levelset, idx_min + vec3i(1, 2, 2), dim),
+        load_levelset(levelset, idx_min, dim, edge_method),
+        load_levelset(levelset, idx_min + vec3i(1, 0, 0), dim, edge_method),
+        load_levelset(levelset, idx_min + vec3i(2, 0, 0), dim, edge_method),
+        load_levelset(levelset, idx_min + vec3i(0, 1, 0), dim, edge_method),
+        load_levelset(levelset, idx_min + vec3i(1, 1, 0), dim, edge_method),
+        load_levelset(levelset, idx_min + vec3i(2, 1, 0), dim, edge_method),
+        load_levelset(levelset, idx_min + vec3i(0, 2, 0), dim, edge_method),
+        load_levelset(levelset, idx_min + vec3i(1, 2, 0), dim, edge_method),
+        load_levelset(levelset, idx_min + vec3i(2, 2, 0), dim, edge_method),
+        load_levelset(levelset, idx_min + vec3i(0, 0, 1), dim, edge_method),
+        load_levelset(levelset, idx_min + vec3i(1, 0, 1), dim, edge_method),
+        load_levelset(levelset, idx_min + vec3i(2, 0, 1), dim, edge_method),
+        load_levelset(levelset, idx_min + vec3i(0, 1, 1), dim, edge_method),
+        load_levelset(levelset, idx_min + vec3i(1, 1, 1), dim, edge_method),
+        load_levelset(levelset, idx_min + vec3i(2, 1, 1), dim, edge_method),
+        load_levelset(levelset, idx_min + vec3i(0, 2, 1), dim, edge_method),
+        load_levelset(levelset, idx_min + vec3i(1, 2, 1), dim, edge_method),
+        load_levelset(levelset, idx_min + vec3i(2, 2, 1), dim, edge_method),
+        load_levelset(levelset, idx_min + vec3i(0, 0, 2), dim, edge_method),
+        load_levelset(levelset, idx_min + vec3i(1, 0, 2), dim, edge_method),
+        load_levelset(levelset, idx_min + vec3i(2, 0, 2), dim, edge_method),
+        load_levelset(levelset, idx_min + vec3i(0, 1, 2), dim, edge_method),
+        load_levelset(levelset, idx_min + vec3i(1, 1, 2), dim, edge_method),
+        load_levelset(levelset, idx_min + vec3i(2, 1, 2), dim, edge_method),
+        load_levelset(levelset, idx_min + vec3i(0, 2, 2), dim, edge_method),
+        load_levelset(levelset, idx_min + vec3i(1, 2, 2), dim, edge_method),
     );
 
     var phi_vertices = array<f32, 7>(0, 0, 0, 0, 0, 0, 0);
@@ -166,11 +171,25 @@ fn load_levelset(
     levelset: texture_storage_3d<r32float, read>,
     idx: vec3i,
     dim: vec3i,
+    edge_method: u32,
 ) -> f32 {
     // 計算領域端のfractionを決め打ちすると、流体がすり抜けてしまうため、範囲外を剛体とする。
     // パフォーマンスへのインパクトは128x32x64解像度で0.04 ms程度の増加
     if any(idx < vec3i(0)) || any(idx >= dim) {
-        return -1.0;
+        switch edge_method {
+            case EDGE_MINUS:
+            {
+                return -1.0;
+            }
+            case EDGE_PLUS:
+            {
+                return 1.0;
+            }
+            default:
+            {
+                return 0.0;
+            }
+        }
     }
     return textureLoad(levelset, idx).x;
 }
