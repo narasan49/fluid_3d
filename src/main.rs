@@ -155,10 +155,10 @@ fn setup_scene(
         LockedAxes::ROTATION_LOCKED,
     ));
 
-    let cube = Cuboid::from_size(Vec3::new(0.2, 0.5, 0.2));
+    let cube = Cuboid::from_size(Vec3::new(0.2, 0.2, 0.5));
     commands.spawn((
         Name::new("Cube"),
-        Transform::default().with_translation(Vec3::new(0.1, cube.half_size.y, -0.2)),
+        Transform::default().with_translation(Vec3::new(-0.3, cube.half_size.y, -0.2)),
         Mesh3d(meshes.add(cube)),
         MeshMaterial3d(materials.add(Color::srgb(0.8, 0.8, 0.8))),
         cube.collider(),
