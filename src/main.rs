@@ -1,3 +1,4 @@
+pub mod diagnostics;
 mod fluid;
 mod game;
 mod marching_cubes;
@@ -22,6 +23,7 @@ use bevy::{
 };
 
 use crate::{
+    diagnostics::fluid_bounds::{FluidBounds, FluidBoundsPlugin},
     fluid::{
         Fluid3d, Fluid3dPlugin, GridLength,
         resources::FluidResources,
@@ -58,6 +60,7 @@ fn main() {
             Fluid3dPlugin,
             MarchingCubesPlugin,
             CharacterControllerPlugin,
+            FluidBoundsPlugin,
         ))
         .add_systems(Startup, setup_dev_tools)
         .add_systems(Startup, setup_scene)
@@ -93,6 +96,7 @@ fn setup_scene(
             rho: 997.0,
             gravity: 9.8 * Vec3::NEG_Y,
         },
+        FluidBounds,
         Transform::from_translation(Vec3::new(0.0, fluid_half_size.y, 0.0)),
     ));
 
@@ -105,6 +109,7 @@ fn setup_scene(
                 rho: 997.0,
                 gravity: 9.8 * Vec3::NEG_Y,
             },
+            FluidBounds,
             Transform::from_translation(Vec3::new(
                 -0.75,
                 fluid_half_size.y + source_fluid_half_size.y - 0.05,
