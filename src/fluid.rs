@@ -12,6 +12,10 @@ use crate::fluid::{
         apply_forces::ApplyForcesResource,
         divergence::DivergenceResource,
         extrapolate_velocity::ExtrapolateVelocityResource,
+        fluid_source::{
+            fluid_sources_uniform::FluidSourcesUniform,
+            update_fluid_sources::UpdateFluidSourcesResource,
+        },
         fluid_uniform::FluidUniform,
         grid_transition::{CollocatedToMacResource, MacToCollocatedResource},
         initialize::InitializeResource,
@@ -44,7 +48,7 @@ impl Plugin for Fluid3dPlugin {
 }
 
 #[derive(Component, ExtractComponent, Clone)]
-#[require(Transform)]
+#[require(Transform, FluidSourcesUniform)]
 pub struct Fluid3d {
     pub resolution: UVec3,
     pub rho: f32,
@@ -75,6 +79,7 @@ fn setup_fluid_component(
         let init_resource = InitializeResource::new(&resources);
 
         let update_solid_resource = UpdateSolidResource::new(&resources);
+        let update_fluid_sources_resource = UpdateFluidSourcesResource::new(&resources);
         let update_fluid_fraction_resource = UpdateAreaFractionsResource::new(&resources);
         let advect_velocity_resource = AdvectVelocityResource::new(&resources);
         let apply_forces_resource = ApplyForcesResource::new(&resources);
@@ -105,6 +110,7 @@ fn setup_fluid_component(
             .insert((fluid_uniform, resources, init_resource))
             .insert((
                 update_solid_resource,
+                update_fluid_sources_resource,
                 update_fluid_fraction_resource,
                 advect_velocity_resource,
                 apply_forces_resource,

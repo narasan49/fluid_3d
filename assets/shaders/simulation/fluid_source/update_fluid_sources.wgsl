@@ -1,3 +1,5 @@
+#import fluid3d::fluid_uniform::FluidUniform
+
 const MODE_SOURCE = 0u;
 const MODE_SINK = 1u;
 
@@ -12,7 +14,7 @@ struct FluidSource {
     // Fluidとの相対座標
     location: vec3f,
     velocity: vec3f,
-    shape_values: array<f32, 3>,
+    shape_values: vec3f,
 }
 
 struct FluidSources {
@@ -25,10 +27,10 @@ struct FluidSources {
 
 @group(1) @binding(0) var<uniform> fluid_uniform: FluidUniform;
 
-@group(2) @binding(0) var<uniform> sources: FluidSources
+@group(2) @binding(0) var<uniform> sources: FluidSources;
 
 @compute @workgroup_size(8, 8, 4)
-fn update_fluid_source(
+fn update_fluid_sources(
     @builtin(global_invocation_id) gid: vec3u,
 ) {
     let dim = textureDimensions(levelset_air0);
@@ -38,9 +40,9 @@ fn update_fluid_source(
     var new_velocity = vec3f(0.0);
     var need_velocity_update = false;
     var has_source = false;
-    for (var i = 0; i < sources.count; i++) {
+    for (var i = 0u; i < sources.count; i++) {
         let source = sources.data[i];
-        let source_level = source_sdf(source, local_position);
+        let source_level = source_sdf(source, local_position)  / fluid_uniform.dx ;
         switch source.mode {
             case MODE_SOURCE:
             {
@@ -72,13 +74,12 @@ fn source_sdf(source: FluidSource, world_pos: vec3f) -> f32 {
     switch source.shape {
         case SHAPE_SPHERE:
         {
-            let radius = source.shape_values[0];
+            let radius = source.shape_values.x;
             return distance(source.location, world_pos) - radius;
         }
         case SHAPE_AABB:
-        {
-            let half_size = vec3f(source.shape_values[0], source.shape_values[1], source.shape_values[2]);
-            return sdf_aabb(half_size, world_pos);
+        {;
+            return sdf_aabb(source.shape_values, world_pos - source.location);
         }
         default:
         {

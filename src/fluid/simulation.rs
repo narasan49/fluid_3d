@@ -39,6 +39,13 @@ use crate::fluid::{
         extrapolate_velocity::{
             ExtrapolateVelocityBindGroups, ExtrapolateVelocityPipeline, ExtrapolateVelocityPlugin,
         },
+        fluid_source::{
+            FluidSourcePlugin,
+            fluid_sources_uniform::FluidSourcesUniformBindGroup,
+            update_fluid_sources::{
+                UpdateFluidSourcesBindGroup, UpdateFluidSourcesPass, UpdateFluidSourcesPipeline,
+            },
+        },
         fluid_uniform::{FluidUniformBindGroup, FluidUniformPlugin},
         grid_transition::{
             CollocatedToMacBindGroup, CollocatedToMacPass, CollocatedToMacPipeline,
@@ -75,10 +82,11 @@ impl Plugin for FluidSimulationPlugin {
         load_shader_library!(app, "simulation/area_fraction.wgsl");
         load_shader_library!(app, "simulation/primitive_sdf.wgsl");
 
-        app.add_plugins((FluidUniformPlugin, SolidToFluidPlugin))
+        app.add_plugins((FluidUniformPlugin, SolidToFluidPlugin, FluidSourcePlugin))
             .add_plugins((
                 FluidComputePassPlugin::<InitializePass>::default(),
                 FluidComputePassPlugin::<UpdateSolidPass>::default(),
+                FluidComputePassPlugin::<UpdateFluidSourcesPass>::default(),
                 FluidComputePassPlugin::<UpdateAreaFractionsPass>::default(),
                 FluidComputePassPlugin::<AdvectVelocityPass>::default(),
                 FluidComputePassPlugin::<ApplyForcesPass>::default(),
@@ -117,8 +125,10 @@ enum SimulationState {
 #[derive(QueryData)]
 struct SimulationBindGroups {
     fluid_uniform_bind_group: &'static FluidUniformBindGroup,
+    fluid_sources_uniform_bind_group: &'static FluidSourcesUniformBindGroup,
     init_bind_group: &'static InitializeBindGroup,
     update_solid_bind_group: &'static UpdateSolidBindGroup,
+    update_fluid_sources_bind_group: &'static UpdateFluidSourcesBindGroup,
     update_fluid_fraction_bind_group: &'static UpdateAreaFractionsBindGroup,
     advect_velocity_bind_group: &'static AdvectVelocityBindGroup,
     apply_forces_bind_group: &'static ApplyForcesBindGroup,
@@ -137,6 +147,7 @@ struct SimulationBindGroups {
 struct FluidPipelines<'w> {
     init_pipeline: Res<'w, InitializePipeline>,
     update_solid_pipeline: Res<'w, UpdateSolidPipeline>,
+    update_fluid_sources_pipeline: Res<'w, UpdateFluidSourcesPipeline>,
     update_fluid_fraction_pipeline: Res<'w, UpdateAreaFractionsPipeline>,
     advect_velocity_pipeline: Res<'w, AdvectVelocityPipeline>,
     apply_forces_pipeline: Res<'w, ApplyForcesPipeline>,
@@ -168,6 +179,9 @@ fn update_simulation_state(
                     .is_ready(&pipeline_cache)
                 && pipelines.divergence_pipeline.is_ready(&pipeline_cache)
                 && pipelines.update_solid_pipeline.is_ready(&pipeline_cache)
+                && pipelines
+                    .update_fluid_sources_pipeline
+                    .is_ready(&pipeline_cache)
                 && pipelines
                     .update_fluid_fraction_pipeline
                     .is_ready(&pipeline_cache)
@@ -250,6 +264,16 @@ fn run_simulation(
                     &bind_groups.update_solid_bind_group,
                     &bind_groups.fluid_uniform_bind_group,
                     &solid_body_bind_group,
+                    fluid.resolution,
+                    WORKGROUP_SIZE,
+                );
+
+                pipelines.update_fluid_sources_pipeline.dispatch(
+                    &mut pass,
+                    &pipeline_cache,
+                    &bind_groups.update_fluid_sources_bind_group,
+                    &bind_groups.fluid_uniform_bind_group,
+                    &bind_groups.fluid_sources_uniform_bind_group,
                     fluid.resolution,
                     WORKGROUP_SIZE,
                 );
