@@ -23,8 +23,12 @@ use bevy::{
 
 use crate::{
     fluid::{
-        Fluid3d, Fluid3dPlugin, GridLength, resources::FluidResources,
-        simulation::solid_to_fluid::SolidShapeOnFluid,
+        Fluid3d, Fluid3dPlugin, GridLength,
+        resources::FluidResources,
+        simulation::{
+            fluid_source::{FluidSource, FluidSourceMode, FluidSourceShape, FluidSourceVelocity},
+            solid_to_fluid::SolidShapeOnFluid,
+        },
     },
     game::{
         character_controller::{CharacterController, CharacterControllerPlugin},
@@ -83,14 +87,28 @@ fn setup_scene(
     // 流体。底面をy=0に設定する。
     let resolution = UVec3::new(128, 32, 64);
     let fluid_half_size = 0.5 * resolution.as_vec3() * (grid_length.0 as f32);
-    commands.spawn((
-        Fluid3d {
-            resolution,
-            rho: 997.0,
-            gravity: 9.8 * Vec3::NEG_Y,
-        },
-        Transform::from_translation(Vec3::new(0.0, fluid_half_size.y, 0.0)),
-    ));
+    commands
+        .spawn((
+            Fluid3d {
+                resolution,
+                rho: 997.0,
+                gravity: 9.8 * Vec3::NEG_Y,
+            },
+            Transform::from_translation(Vec3::new(0.0, fluid_half_size.y, 0.0)),
+        ))
+        .with_children(|commands| {
+            commands.spawn((
+                FluidSource {
+                    avtive: true,
+                    mode: FluidSourceMode::Source,
+                },
+                FluidSourceShape::Aabb {
+                    half_size: Vec3::splat(0.05),
+                },
+                FluidSourceVelocity(Vec3::NEG_Y * 3.0),
+                Transform::from_translation(Vec3::new(-0.4, 0.1, 0.0)),
+            ));
+        });
 
     let material_terrain = materials.add(Color::srgb(0.8, 0.8, 0.8));
     // 上面をy=0にする
@@ -158,7 +176,7 @@ fn setup_scene(
     let cube = Cuboid::from_size(Vec3::new(0.2, 0.2, 0.5));
     commands.spawn((
         Name::new("Cube"),
-        Transform::default().with_translation(Vec3::new(-0.3, cube.half_size.y, -0.2)),
+        Transform::default().with_translation(Vec3::new(-0.8, cube.half_size.y, -0.2)),
         Mesh3d(meshes.add(cube)),
         MeshMaterial3d(materials.add(Color::srgb(0.8, 0.8, 0.8))),
         cube.collider(),
