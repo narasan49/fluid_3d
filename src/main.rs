@@ -87,8 +87,9 @@ fn setup_scene(
     mut materials: ResMut<Assets<StandardMaterial>>,
     grid_length: Res<GridLength>,
 ) {
+    let material_terrain = materials.add(Color::srgb(0.8, 0.8, 0.8));
     // 流体。底面をy=0に設定する。
-    let resolution = UVec3::new(128, 32, 64);
+    let resolution = UVec3::new(128, 24, 64);
     let fluid_half_size = 0.5 * resolution.as_vec3() * (grid_length.0 as f32);
     commands.spawn((
         Fluid3d {
@@ -124,25 +125,40 @@ fn setup_scene(
             },
             Transform::from_translation(Vec3::new(
                 -0.75,
-                fluid_half_size.y + source_fluid_half_size.y - 0.05,
+                2.0 * fluid_half_size.y + source_fluid_half_size.y - 0.15,
                 -fluid_half_size.z,
             )),
         ))
         .with_children(|commands| {
-            commands.spawn((
-                FluidSource {
-                    avtive: true,
-                    mode: FluidSourceMode::Source,
-                },
-                FluidSourceShape::Aabb {
-                    half_size: Vec3::splat(0.08),
-                },
-                FluidSourceVelocity(Vec3::Z * 20.0),
-                Transform::from_translation(Vec3::new(0.0, 0.2, -source_fluid_half_size.z * 0.5)),
-            ));
+            commands
+                .spawn((
+                    FluidSource {
+                        avtive: true,
+                        mode: FluidSourceMode::Source,
+                    },
+                    FluidSourceShape::Aabb {
+                        half_size: Vec3::splat(0.06),
+                    },
+                    FluidSourceVelocity(Vec3::Z * 20.0),
+                    Transform::from_translation(Vec3::new(
+                        0.0,
+                        -0.05,
+                        -source_fluid_half_size.z * 0.5,
+                    )),
+                ))
+                .with_children(|commands| {
+                    let cylinder = Cylinder::new(0.1, 0.4);
+                    commands.spawn((
+                        Mesh3d(meshes.add(cylinder)),
+                        MeshMaterial3d(material_terrain.clone()),
+                        cylinder.collider(),
+                        Transform::default()
+                            .with_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2))
+                            .with_translation(Vec3::new(0.0, 0.0, -0.05)),
+                    ));
+                });
         });
 
-    let material_terrain = materials.add(Color::srgb(0.8, 0.8, 0.8));
     // 上面をy=0にする
     let floor_1_1 = Cuboid::new(2.0, 0.1, 2.0);
     commands.spawn((
@@ -202,6 +218,20 @@ fn setup_scene(
         RigidBody::Static,
     ));
 
+    commands.spawn((
+        Name::new("Floor_2_3"),
+        Mesh3d(meshes.add(floor_2_1)),
+        MeshMaterial3d(material_terrain.clone()),
+        floor_2_1.collider(),
+        SolidShapeOnFluid::Cuboid(floor_2_1),
+        Transform::default().with_translation(Vec3::new(
+            0.0,
+            -floor_2_1.half_size.y + slope_height,
+            0.75,
+        )),
+        RigidBody::Static,
+    ));
+
     let slope_2 = Extrusion::<Triangle2d>::new(
         Triangle2d::new(
             Vec2::new(0.0, 0.0),
@@ -211,7 +241,7 @@ fn setup_scene(
         0.5,
     );
     let slope_2_mesh = meshes.add(slope_2);
-    let slope_2_translate = Vec3::new(-1.0 + 0.3, slope_height, -0.75);
+    let slope_2_translate = Vec3::new(-0.75, slope_height, -0.75);
     commands.spawn((
         Name::new("Slope_2_1"),
         Mesh3d(slope_2_mesh.clone()),
@@ -242,9 +272,9 @@ fn setup_scene(
     commands.spawn((
         Name::new("PlayerCapsule"),
         Transform::from_xyz(
-            0.0,
+            1.0,
             player_capsule.half_length + player_capsule.radius + 10.0,
-            0.5,
+            0.0,
         ),
         Mesh3d(meshes.add(player_capsule)),
         MeshMaterial3d(materials.add(Color::srgb(0.8, 0.8, 0.0))),
@@ -255,10 +285,10 @@ fn setup_scene(
         LockedAxes::ROTATION_LOCKED,
     ));
 
-    let moving_cube = Cuboid::from_size(Vec3::new(0.2, 0.2, 0.2));
+    let moving_cube = Cuboid::from_size(Vec3::new(0.1, 0.2, 0.8));
     commands.spawn((
         Name::new("MovingCube"),
-        Transform::default().with_translation(Vec3::new(-0.8, moving_cube.half_size.y, 0.0)),
+        Transform::default().with_translation(Vec3::new(-0.85, moving_cube.half_size.y, 0.0)),
         Mesh3d(meshes.add(moving_cube)),
         MeshMaterial3d(materials.add(Color::srgb(0.8, 0.8, 0.8))),
         moving_cube.collider(),
