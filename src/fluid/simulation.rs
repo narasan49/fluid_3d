@@ -9,6 +9,7 @@ pub mod grid_transition;
 pub mod initialize;
 pub mod projection;
 pub mod reinitialize_levelset;
+pub mod resolve_overlap;
 pub mod solid_to_fluid;
 pub mod solve_velocity;
 pub mod update_area_fractions;
@@ -62,6 +63,10 @@ use crate::fluid::{
             ReinitializeLevelSetBindGroups, ReinitializeLevelSetPlugin,
             reinitialize_levelset_dispatch,
         },
+        resolve_overlap::{
+            ResolveOverlapPlugin,
+            resolve_overlap_pass::{ResolveOverlapBindGroups, ResolveOverlapPipeline},
+        },
         solid_to_fluid::{SolidBodyBufferBindGroup, SolidToFluidPlugin},
         solve_velocity::{SolveVelocityBindGroup, SolveVelocityPass, SolveVelocityPipeline},
         update_area_fractions::{
@@ -82,24 +87,29 @@ impl Plugin for FluidSimulationPlugin {
         load_shader_library!(app, "simulation/area_fraction.wgsl");
         load_shader_library!(app, "simulation/primitive_sdf.wgsl");
 
-        app.add_plugins((FluidUniformPlugin, SolidToFluidPlugin, FluidSourcePlugin))
-            .add_plugins((
-                FluidComputePassPlugin::<InitializePass>::default(),
-                FluidComputePassPlugin::<UpdateSolidPass>::default(),
-                FluidComputePassPlugin::<UpdateFluidSourcesPass>::default(),
-                FluidComputePassPlugin::<UpdateAreaFractionsPass>::default(),
-                FluidComputePassPlugin::<AdvectVelocityPass>::default(),
-                FluidComputePassPlugin::<ApplyForcesPass>::default(),
-                FluidComputePassPlugin::<CollocatedToMacPass>::default(),
-                FluidComputePassPlugin::<DivergencePass>::default(),
-                MultigridProjectionPassPlugin,
-                FluidComputePassPlugin::<SolveVelocityPass>::default(),
-                FluidComputePassPlugin::<MacToCollocatedPass>::default(),
-                FluidComputePassPlugin::<AdvectLevelSetPass>::default(),
-                ReinitializeLevelSetPlugin,
-                FluidComputePassPlugin::<UpdateLevelSetGradPass>::default(),
-                ExtrapolateVelocityPlugin,
-            ));
+        app.add_plugins((
+            FluidUniformPlugin,
+            SolidToFluidPlugin,
+            FluidSourcePlugin,
+            ResolveOverlapPlugin,
+        ))
+        .add_plugins((
+            FluidComputePassPlugin::<InitializePass>::default(),
+            FluidComputePassPlugin::<UpdateSolidPass>::default(),
+            FluidComputePassPlugin::<UpdateFluidSourcesPass>::default(),
+            FluidComputePassPlugin::<UpdateAreaFractionsPass>::default(),
+            FluidComputePassPlugin::<AdvectVelocityPass>::default(),
+            FluidComputePassPlugin::<ApplyForcesPass>::default(),
+            FluidComputePassPlugin::<CollocatedToMacPass>::default(),
+            FluidComputePassPlugin::<DivergencePass>::default(),
+            MultigridProjectionPassPlugin,
+            FluidComputePassPlugin::<SolveVelocityPass>::default(),
+            FluidComputePassPlugin::<MacToCollocatedPass>::default(),
+            FluidComputePassPlugin::<AdvectLevelSetPass>::default(),
+            ReinitializeLevelSetPlugin,
+            FluidComputePassPlugin::<UpdateLevelSetGradPass>::default(),
+            ExtrapolateVelocityPlugin,
+        ));
 
         let Some(render_app) = app.get_sub_app_mut(RenderApp) else {
             return;
@@ -126,6 +136,7 @@ enum SimulationState {
 struct SimulationBindGroups {
     fluid_uniform_bind_group: &'static FluidUniformBindGroup,
     fluid_sources_uniform_bind_group: &'static FluidSourcesUniformBindGroup,
+    resolve_overlap_bind_groups: &'static ResolveOverlapBindGroups,
     init_bind_group: &'static InitializeBindGroup,
     update_solid_bind_group: &'static UpdateSolidBindGroup,
     update_fluid_sources_bind_group: &'static UpdateFluidSourcesBindGroup,
@@ -148,6 +159,7 @@ struct FluidPipelines<'w> {
     init_pipeline: Res<'w, InitializePipeline>,
     update_solid_pipeline: Res<'w, UpdateSolidPipeline>,
     update_fluid_sources_pipeline: Res<'w, UpdateFluidSourcesPipeline>,
+    resolve_overlap_pipeline: Res<'w, ResolveOverlapPipeline>,
     update_fluid_fraction_pipeline: Res<'w, UpdateAreaFractionsPipeline>,
     advect_velocity_pipeline: Res<'w, AdvectVelocityPipeline>,
     apply_forces_pipeline: Res<'w, ApplyForcesPipeline>,
@@ -182,6 +194,7 @@ fn update_simulation_state(
                 && pipelines
                     .update_fluid_sources_pipeline
                     .is_ready(&pipeline_cache)
+                && pipelines.resolve_overlap_pipeline.is_ready(&pipeline_cache)
                 && pipelines
                     .update_fluid_fraction_pipeline
                     .is_ready(&pipeline_cache)
@@ -274,6 +287,15 @@ fn run_simulation(
                     &bind_groups.update_fluid_sources_bind_group,
                     &bind_groups.fluid_uniform_bind_group,
                     &bind_groups.fluid_sources_uniform_bind_group,
+                    fluid.resolution,
+                    WORKGROUP_SIZE,
+                );
+
+                pipelines.resolve_overlap_pipeline.dispatch(
+                    &mut pass,
+                    &pipeline_cache,
+                    &bind_groups.resolve_overlap_bind_groups,
+                    &bind_groups.fluid_uniform_bind_group,
                     fluid.resolution,
                     WORKGROUP_SIZE,
                 );

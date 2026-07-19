@@ -42,7 +42,10 @@ pub struct Fluid3dPlugin;
 impl Plugin for Fluid3dPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(FluidSimulationPlugin)
-            .add_plugins(ExtractComponentPlugin::<Fluid3d>::default())
+            .add_plugins((
+                ExtractComponentPlugin::<Fluid3d>::default(),
+                ExtractComponentPlugin::<FluidResources>::default(),
+            ))
             .add_systems(Update, setup_fluid_component);
     }
 }
