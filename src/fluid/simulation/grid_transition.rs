@@ -14,6 +14,7 @@ use crate::fluid::{
     compute_pass::FluidComputePass,
     pipeline::{FluidPipeline, is_pipeline_loaded},
     resources::FluidResources,
+    simulation::fluid_uniform::{FluidUniformBindGroup, FluidUniformBindGroupLayout},
     workgroup::num_workgroups,
 };
 
@@ -164,14 +165,20 @@ impl CollocatedToMacPipeline {
         pass: &mut ComputePass,
         pipeline_cache: &PipelineCache,
         bind_group: &CollocatedToMacBindGroup,
+        uniform_bind_group: &FluidUniformBindGroup,
         resolution: UVec3,
         workgroup_size: UVec3,
     ) {
         let pipeline = pipeline_cache.get_compute_pipeline(self.pipeline).unwrap();
-        let workgroups = num_workgroups(resolution - UVec3::ONE, workgroup_size);
+        let workgroups = num_workgroups(resolution + UVec3::ONE, workgroup_size);
         pass.push_debug_group("collocated_to_mac");
         pass.set_pipeline(pipeline);
         pass.set_bind_group(0, &bind_group.bind_group, &[]);
+        pass.set_bind_group(
+            1,
+            &uniform_bind_group.bind_group,
+            &[uniform_bind_group.index],
+        );
         pass.dispatch_workgroups(workgroups.x, workgroups.y, workgroups.z);
         pass.pop_debug_group();
     }
@@ -185,10 +192,14 @@ impl FromWorld for CollocatedToMacPipeline {
 
         let bind_group_layout =
             CollocatedToMacResource::bind_group_layout_descriptor(render_device);
+        let uniform_bind_group_layout = world.resource::<FluidUniformBindGroupLayout>();
 
         let pipeline = pipeline_cache.queue_compute_pipeline(ComputePipelineDescriptor {
             label: Some("collocated_to_mac_pipeline".into()),
-            layout: vec![bind_group_layout.clone()],
+            layout: vec![
+                bind_group_layout.clone(),
+                uniform_bind_group_layout.0.clone(),
+            ],
             shader: asset_server.load("shaders/simulation/grid_transition/collocated_to_mac.wgsl"),
             entry_point: Some("collocated_to_mac".into()),
             ..default()

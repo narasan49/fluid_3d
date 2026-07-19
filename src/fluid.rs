@@ -42,17 +42,64 @@ pub struct Fluid3dPlugin;
 impl Plugin for Fluid3dPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(FluidSimulationPlugin)
-            .add_plugins(ExtractComponentPlugin::<Fluid3d>::default())
+            .add_plugins((
+                ExtractComponentPlugin::<Fluid3d>::default(),
+                ExtractComponentPlugin::<FluidResources>::default(),
+                ExtractComponentPlugin::<BoundaryConditions>::default(),
+            ))
             .add_systems(Update, setup_fluid_component);
     }
 }
 
 #[derive(Component, ExtractComponent, Clone)]
-#[require(Transform, FluidSourcesUniform)]
+#[require(Transform, FluidSourcesUniform, BoundaryConditions)]
 pub struct Fluid3d {
     pub resolution: UVec3,
     pub rho: f32,
     pub gravity: Vec3,
+}
+
+#[derive(Component, ExtractComponent, Clone, Default)]
+pub struct BoundaryConditions {
+    pub x_min: FluidBoundaryMethod,
+    pub y_min: FluidBoundaryMethod,
+    pub z_min: FluidBoundaryMethod,
+    pub x_max: FluidBoundaryMethod,
+    pub y_max: FluidBoundaryMethod,
+    pub z_max: FluidBoundaryMethod,
+}
+
+impl BoundaryConditions {
+    fn conditions_min(&self) -> UVec3 {
+        UVec3 {
+            x: self.x_min.to_u32(),
+            y: self.y_min.to_u32(),
+            z: self.z_min.to_u32(),
+        }
+    }
+    fn conditions_max(&self) -> UVec3 {
+        UVec3 {
+            x: self.x_max.to_u32(),
+            y: self.y_max.to_u32(),
+            z: self.z_max.to_u32(),
+        }
+    }
+}
+
+#[derive(Clone, Default)]
+pub enum FluidBoundaryMethod {
+    #[default]
+    Wall,
+    Open,
+}
+
+impl FluidBoundaryMethod {
+    fn to_u32(&self) -> u32 {
+        match self {
+            FluidBoundaryMethod::Wall => 0u32,
+            FluidBoundaryMethod::Open => 1u32,
+        }
+    }
 }
 
 #[derive(Resource)]
@@ -60,11 +107,11 @@ pub struct GridLength(pub f32);
 
 fn setup_fluid_component(
     mut commands: Commands,
-    query: Query<(Entity, &Fluid3d, &Transform), Added<Fluid3d>>,
+    query: Query<(Entity, &Fluid3d, &BoundaryConditions, &Transform), Added<Fluid3d>>,
     grid_length: Res<GridLength>,
     mut images: ResMut<Assets<Image>>,
 ) {
-    for (entity, fluid3d, transform) in &query {
+    for (entity, fluid3d, boundary_conditions, transform) in &query {
         let resources = FluidResources::new(&mut images, fluid3d.resolution);
         let half_size = 0.5 * fluid3d.resolution.as_vec3() * (grid_length.0 as f32);
         let fluid_uniform = FluidUniform {
@@ -75,6 +122,8 @@ fn setup_fluid_component(
             gravity: fluid3d.gravity,
             transform: transform.to_matrix(),
             half_size,
+            boundary_condition_min: boundary_conditions.conditions_min(),
+            boundary_condition_max: boundary_conditions.conditions_max(),
         };
         let init_resource = InitializeResource::new(&resources);
 

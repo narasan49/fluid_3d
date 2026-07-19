@@ -2,10 +2,13 @@ use bevy::{
     asset::RenderAssetUsages,
     image::TextureFormatPixelInfo,
     prelude::*,
-    render::render_resource::{Extent3d, TextureDimension, TextureFormat, TextureUsages},
+    render::{
+        extract_component::ExtractComponent,
+        render_resource::{Extent3d, TextureDimension, TextureFormat, TextureUsages},
+    },
 };
 
-#[derive(Component)]
+#[derive(Component, ExtractComponent, Clone)]
 pub struct FluidResources {
     /// 流体レベルセット(SDF)。0未満が流体、0以上がそれ以外を表す。
     pub levelset_air0: Handle<Image>,

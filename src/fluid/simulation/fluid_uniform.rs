@@ -57,6 +57,8 @@ pub struct FluidUniform {
     pub transform: Mat4,
     pub resolution: UVec3,
     pub half_size: Vec3,
+    pub boundary_condition_min: UVec3,
+    pub boundary_condition_max: UVec3,
 }
 
 #[derive(Resource)]

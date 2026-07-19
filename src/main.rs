@@ -1,3 +1,4 @@
+pub mod diagnostics;
 mod fluid;
 mod game;
 mod marching_cubes;
@@ -22,8 +23,9 @@ use bevy::{
 };
 
 use crate::{
+    diagnostics::fluid_bounds::{FluidBounds, FluidBoundsPlugin},
     fluid::{
-        Fluid3d, Fluid3dPlugin, GridLength,
+        BoundaryConditions, Fluid3d, Fluid3dPlugin, FluidBoundaryMethod, GridLength,
         resources::FluidResources,
         simulation::{
             fluid_source::{FluidSource, FluidSourceMode, FluidSourceShape, FluidSourceVelocity},
@@ -58,6 +60,7 @@ fn main() {
             Fluid3dPlugin,
             MarchingCubesPlugin,
             CharacterControllerPlugin,
+            FluidBoundsPlugin,
         ))
         .add_systems(Startup, setup_dev_tools)
         .add_systems(Startup, setup_scene)
@@ -87,6 +90,22 @@ fn setup_scene(
     // 流体。底面をy=0に設定する。
     let resolution = UVec3::new(128, 32, 64);
     let fluid_half_size = 0.5 * resolution.as_vec3() * (grid_length.0 as f32);
+    commands.spawn((
+        Fluid3d {
+            resolution,
+            rho: 997.0,
+            gravity: 9.8 * Vec3::NEG_Y,
+        },
+        FluidBounds,
+        BoundaryConditions {
+            y_max: FluidBoundaryMethod::Open,
+            ..default()
+        },
+        Transform::from_translation(Vec3::new(0.0, fluid_half_size.y, 0.0)),
+    ));
+
+    let resolution = UVec3::new(32, 32, 64);
+    let source_fluid_half_size = 0.5 * resolution.as_vec3() * (grid_length.0 as f32);
     commands
         .spawn((
             Fluid3d {
@@ -94,7 +113,20 @@ fn setup_scene(
                 rho: 997.0,
                 gravity: 9.8 * Vec3::NEG_Y,
             },
-            Transform::from_translation(Vec3::new(0.0, fluid_half_size.y, 0.0)),
+            FluidBounds,
+            BoundaryConditions {
+                x_min: FluidBoundaryMethod::Wall,
+                x_max: FluidBoundaryMethod::Open,
+                y_min: FluidBoundaryMethod::Open,
+                y_max: FluidBoundaryMethod::Wall,
+                z_min: FluidBoundaryMethod::Open,
+                z_max: FluidBoundaryMethod::Open,
+            },
+            Transform::from_translation(Vec3::new(
+                -0.75,
+                fluid_half_size.y + source_fluid_half_size.y - 0.05,
+                -fluid_half_size.z,
+            )),
         ))
         .with_children(|commands| {
             commands.spawn((
@@ -103,31 +135,32 @@ fn setup_scene(
                     mode: FluidSourceMode::Source,
                 },
                 FluidSourceShape::Aabb {
-                    half_size: Vec3::splat(0.05),
+                    half_size: Vec3::splat(0.08),
                 },
-                FluidSourceVelocity(Vec3::NEG_Y * 3.0),
-                Transform::from_translation(Vec3::new(-0.4, 0.1, 0.0)),
+                FluidSourceVelocity(Vec3::Z * 20.0),
+                Transform::from_translation(Vec3::new(0.0, 0.2, -source_fluid_half_size.z * 0.5)),
             ));
         });
 
     let material_terrain = materials.add(Color::srgb(0.8, 0.8, 0.8));
     // 上面をy=0にする
-    let ground_shape = Cuboid::new(2.0, 0.1, 2.0);
+    let floor_1_1 = Cuboid::new(2.0, 0.1, 2.0);
     commands.spawn((
-        Name::new("Ground"),
-        Mesh3d(meshes.add(ground_shape)),
+        Name::new("Floor_1_1"),
+        Mesh3d(meshes.add(floor_1_1)),
         MeshMaterial3d(material_terrain.clone()),
-        ground_shape.collider(),
-        SolidShapeOnFluid::Cuboid(ground_shape),
-        Transform::default().with_translation(Vec3::new(0.0, -ground_shape.half_size.y, 0.0)),
+        floor_1_1.collider(),
+        SolidShapeOnFluid::Cuboid(floor_1_1),
+        Transform::default().with_translation(Vec3::new(0.0, -floor_1_1.half_size.y, 0.0)),
         RigidBody::Static,
     ));
 
+    let slope_height = 0.3;
     let slope = Extrusion::<Triangle2d>::new(
         Triangle2d::new(
             Vec2::new(0.0, 0.0),
             Vec2::new(1.0, 0.0),
-            Vec2::new(1.0, 0.4),
+            Vec2::new(1.0, slope_height),
         ),
         1.0,
     );
@@ -140,18 +173,63 @@ fn setup_scene(
         RigidBody::Kinematic,
     ));
 
-    let second_floor = Cuboid::new(2.0, 0.1, 0.5);
+    let floor_2_1 = Cuboid::new(2.0, slope_height, 0.5);
     commands.spawn((
-        Name::new("2ndFloor"),
-        Mesh3d(meshes.add(second_floor)),
+        Name::new("Floor_2_1"),
+        Mesh3d(meshes.add(floor_2_1)),
         MeshMaterial3d(material_terrain.clone()),
-        second_floor.collider(),
+        floor_2_1.collider(),
+        SolidShapeOnFluid::Cuboid(floor_2_1),
         Transform::default().with_translation(Vec3::new(
             0.0,
-            -second_floor.half_size.y + 0.4,
-            -1.0,
+            -floor_2_1.half_size.y + slope_height,
+            -0.75,
         )),
         RigidBody::Static,
+    ));
+
+    let floor_2_2 = Cuboid::new(0.5, 0.1, 2.0);
+    commands.spawn((
+        Name::new("Floor_2_2"),
+        Mesh3d(meshes.add(floor_2_2)),
+        MeshMaterial3d(material_terrain.clone()),
+        floor_2_2.collider(),
+        Transform::default().with_translation(Vec3::new(
+            1.0 + floor_2_2.half_size.x,
+            -floor_2_2.half_size.y + slope_height,
+            0.0,
+        )),
+        RigidBody::Static,
+    ));
+
+    let slope_2 = Extrusion::<Triangle2d>::new(
+        Triangle2d::new(
+            Vec2::new(0.0, 0.0),
+            Vec2::new(0.3, 0.0),
+            Vec2::new(0.3, slope_height),
+        ),
+        0.5,
+    );
+    let slope_2_mesh = meshes.add(slope_2);
+    let slope_2_translate = Vec3::new(-1.0 + 0.3, slope_height, -0.75);
+    commands.spawn((
+        Name::new("Slope_2_1"),
+        Mesh3d(slope_2_mesh.clone()),
+        SolidShapeOnFluid::TriangularPrism(slope_2),
+        TriangularPrism::from(slope_2).collider(),
+        MeshMaterial3d(material_terrain.clone()),
+        Transform::from_translation(slope_2_translate),
+        RigidBody::Kinematic,
+    ));
+    commands.spawn((
+        Name::new("Slope_2_2"),
+        Mesh3d(slope_2_mesh),
+        SolidShapeOnFluid::TriangularPrism(slope_2),
+        TriangularPrism::from(slope_2).collider(),
+        MeshMaterial3d(material_terrain.clone()),
+        Transform::from_rotation(Quat::from_rotation_y(std::f32::consts::PI))
+            .with_translation(slope_2_translate),
+        RigidBody::Kinematic,
     ));
 
     commands.spawn((
@@ -160,27 +238,31 @@ fn setup_scene(
         Transform::from_xyz(0.0, 15.0, 0.0),
     ));
 
-    let capsule = Capsule3d::new(0.05, 0.1);
+    let player_capsule = Capsule3d::new(0.05, 0.1);
     commands.spawn((
         Name::new("PlayerCapsule"),
-        Transform::from_xyz(0.0, capsule.half_length + capsule.radius + 10.0, 0.5),
-        Mesh3d(meshes.add(capsule)),
+        Transform::from_xyz(
+            0.0,
+            player_capsule.half_length + player_capsule.radius + 10.0,
+            0.5,
+        ),
+        Mesh3d(meshes.add(player_capsule)),
         MeshMaterial3d(materials.add(Color::srgb(0.8, 0.8, 0.0))),
-        capsule.collider(),
-        SolidShapeOnFluid::Capsule(capsule),
+        player_capsule.collider(),
+        SolidShapeOnFluid::Capsule(player_capsule),
         CharacterController,
         RigidBody::Dynamic,
         LockedAxes::ROTATION_LOCKED,
     ));
 
-    let cube = Cuboid::from_size(Vec3::new(0.2, 0.2, 0.5));
+    let moving_cube = Cuboid::from_size(Vec3::new(0.2, 0.2, 0.2));
     commands.spawn((
-        Name::new("Cube"),
-        Transform::default().with_translation(Vec3::new(-0.8, cube.half_size.y, -0.2)),
-        Mesh3d(meshes.add(cube)),
+        Name::new("MovingCube"),
+        Transform::default().with_translation(Vec3::new(-0.8, moving_cube.half_size.y, 0.0)),
+        Mesh3d(meshes.add(moving_cube)),
         MeshMaterial3d(materials.add(Color::srgb(0.8, 0.8, 0.8))),
-        cube.collider(),
-        SolidShapeOnFluid::Cuboid(cube),
+        moving_cube.collider(),
+        SolidShapeOnFluid::Cuboid(moving_cube),
         RigidBody::Kinematic,
         MovingObject,
     ));
