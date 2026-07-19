@@ -25,7 +25,7 @@ use bevy::{
 use crate::{
     diagnostics::fluid_bounds::{FluidBounds, FluidBoundsPlugin},
     fluid::{
-        Fluid3d, Fluid3dPlugin, GridLength,
+        BoundaryConditions, Fluid3d, Fluid3dPlugin, FluidBoundaryMethod, GridLength,
         resources::FluidResources,
         simulation::{
             fluid_source::{FluidSource, FluidSourceMode, FluidSourceShape, FluidSourceVelocity},
@@ -97,6 +97,10 @@ fn setup_scene(
             gravity: 9.8 * Vec3::NEG_Y,
         },
         FluidBounds,
+        BoundaryConditions {
+            y_max: FluidBoundaryMethod::Open,
+            ..default()
+        },
         Transform::from_translation(Vec3::new(0.0, fluid_half_size.y, 0.0)),
     ));
 
@@ -110,6 +114,14 @@ fn setup_scene(
                 gravity: 9.8 * Vec3::NEG_Y,
             },
             FluidBounds,
+            BoundaryConditions {
+                x_min: FluidBoundaryMethod::Wall,
+                x_max: FluidBoundaryMethod::Open,
+                y_min: FluidBoundaryMethod::Open,
+                y_max: FluidBoundaryMethod::Wall,
+                z_min: FluidBoundaryMethod::Open,
+                z_max: FluidBoundaryMethod::Open,
+            },
             Transform::from_translation(Vec3::new(
                 -0.75,
                 fluid_half_size.y + source_fluid_half_size.y - 0.05,
@@ -125,7 +137,7 @@ fn setup_scene(
                 FluidSourceShape::Aabb {
                     half_size: Vec3::splat(0.08),
                 },
-                FluidSourceVelocity(Vec3::Z * 10.0),
+                FluidSourceVelocity(Vec3::Z * 20.0),
                 Transform::from_translation(Vec3::new(0.0, 0.2, -source_fluid_half_size.z * 0.5)),
             ));
         });

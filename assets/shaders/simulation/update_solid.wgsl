@@ -1,4 +1,4 @@
-#import fluid3d::fluid_uniform::FluidUniform
+#import fluid3d::fluid_uniform::{FluidUniform, BOUNDARY_WALL, BOUNDARY_OPEN}
 #import fluid3d::primitive_sdf::{SolidBody, SHAPE_CAPSULE, Capsule, sdf_solid_body}
 
 @group(0) @binding(0) var u_solid: texture_storage_3d<rgba16float, read_write>;
@@ -35,12 +35,24 @@ fn update_solid(
 
     var level_solid = 1e6;
     var velocity = vec3f(0.0);
-    level_solid = min(level_solid, f32(gid.x));
-    level_solid = min(level_solid, f32(dim.x - gid.x) - 1.0);
-    level_solid = min(level_solid, f32(gid.y));
-    level_solid = min(level_solid, f32(dim.y - gid.y) - 1.0);
-    level_solid = min(level_solid, f32(gid.z));
-    level_solid = min(level_solid, f32(dim.z - gid.z) - 1.0);
+    if fluid_uniform.boundary_condition_min.x == BOUNDARY_WALL {
+        level_solid = min(level_solid, f32(gid.x));
+    }
+    if fluid_uniform.boundary_condition_max.x == BOUNDARY_WALL {
+        level_solid = min(level_solid, f32(dim.x - gid.x) - 1.0);
+    }
+    if fluid_uniform.boundary_condition_min.y == BOUNDARY_WALL {
+        level_solid = min(level_solid, f32(gid.y));
+    }
+    if fluid_uniform.boundary_condition_max.y == BOUNDARY_WALL {
+        level_solid = min(level_solid, f32(dim.y - gid.y) - 1.0);
+    }
+    if fluid_uniform.boundary_condition_min.z == BOUNDARY_WALL {
+        level_solid = min(level_solid, f32(gid.z));
+    }
+    if fluid_uniform.boundary_condition_max.z == BOUNDARY_WALL {
+        level_solid = min(level_solid, f32(dim.z - gid.z) - 1.0);
+    }
     
     for (var i = 0u; i < array_length; i++) {
         // meter -> pixel

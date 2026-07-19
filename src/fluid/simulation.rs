@@ -330,6 +330,7 @@ fn run_simulation(
                     &mut pass,
                     &pipeline_cache,
                     &bind_groups.collocated_to_mac_bind_group,
+                    &bind_groups.fluid_uniform_bind_group,
                     fluid.resolution,
                     WORKGROUP_SIZE,
                 );

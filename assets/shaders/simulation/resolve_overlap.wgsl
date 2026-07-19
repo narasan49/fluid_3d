@@ -24,7 +24,7 @@ fn resolve_overlap(
     let local_position_other = fluid_uniform_other.inverse_transform * global_position;
 
     let uv_other = 0.5 * (local_position_other.xyz / fluid_uniform_other.half_size + 1.0);
-    if any(uv_other < vec3f(0.0)) || any(vec3f(1.0) < uv_other) {
+    if any(uv_other < vec3f(0.0)) || any(vec3f(1.0) <= uv_other) {
         return;
     }
     let dim_other = textureDimensions(levelset_air_other);
