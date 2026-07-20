@@ -44,7 +44,7 @@ impl Plugin for FluidSourcePlugin {
 #[derive(Component, ExtractComponent, Clone)]
 #[require(Transform, FluidSourceShape, FluidSourceVelocity)]
 pub struct FluidSource {
-    pub avtive: bool,
+    pub active: bool,
     pub mode: FluidSourceMode,
 }
 

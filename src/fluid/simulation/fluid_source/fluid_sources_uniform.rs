@@ -97,6 +97,9 @@ pub(super) fn update_fluid_sources_buffer(
             else {
                 continue;
             };
+            if !source.active {
+                continue;
+            }
             if count >= MAX_FLUID_SOURCE {
                 warn!(
                     "maximum fluid sources per fluid entity ({:?}) exceeded",
