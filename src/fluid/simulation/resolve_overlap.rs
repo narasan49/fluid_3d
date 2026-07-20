@@ -51,6 +51,12 @@ impl PartialOrd for BroadPhaseMarker {
     }
 }
 
+#[derive(Clone)]
+struct ActiveListItem {
+    entity: Entity,
+    render_entity: Entity,
+}
+
 /// 1. オブジェクトのAABB境界をx, y, z軸に射影する。
 /// 2. 各軸ですべてのオブジェクトのAABBの境界[bi, ei]を配列に格納
 /// 3. 配列をソート
@@ -140,7 +146,6 @@ fn sort_and_sweep(
             })
             .collect::<Vec<_>>();
 
-        // info!("collision pairs: Entity={entity:?}, Others={collided_entities:?}");
         commands
             .entity(*entity)
             .insert(OverlappedFluids(collided_entities));
@@ -148,28 +153,85 @@ fn sort_and_sweep(
 }
 
 fn collision_candidates_1d(markers: &Vec<BroadPhaseMarker>) -> HashMap<Entity, Vec<Entity>> {
-    let mut active_list = Vec::with_capacity(10);
-    let mut collision_candidates = HashMap::new();
+    let mut active_list = Vec::<ActiveListItem>::with_capacity(10);
+    let mut collision_candidates: HashMap<Entity, Vec<Entity>> = HashMap::new();
     for marker_x in markers {
         match marker_x.marker {
             Marker::Beginning => {
-                collision_candidates.insert(marker_x.entity, active_list.clone());
-                active_list.push(marker_x.render_entity);
+                collision_candidates.insert(
+                    marker_x.entity,
+                    active_list.iter().map(|item| item.render_entity).collect(),
+                );
+                for active_entity in &active_list {
+                    if let Some(candidates_counterpart) =
+                        collision_candidates.get_mut(&active_entity.entity)
+                    {
+                        candidates_counterpart.push(marker_x.render_entity);
+                    }
+                }
+                active_list.push(ActiveListItem {
+                    entity: marker_x.entity,
+                    render_entity: marker_x.render_entity,
+                });
             }
             Marker::End => {
                 let (index, _entity) = active_list
                     .iter()
                     .enumerate()
-                    .find(|&e| *e.1 == marker_x.render_entity)
+                    .find(|&e| e.1.render_entity == marker_x.render_entity)
                     .unwrap();
                 active_list.remove(index);
-                if let Some(candidates) = collision_candidates.get_mut(&marker_x.entity) {
-                    // ToDo: 重複の可能性はあるが、差し当たって不具合にはならない
-                    candidates.extend(active_list.clone());
-                }
             }
         }
     }
 
     collision_candidates
+}
+
+#[cfg(test)]
+mod test {
+    use bevy::ecs::entity::{Entity, EntityIndex};
+
+    use crate::fluid::simulation::resolve_overlap::{
+        BroadPhaseMarker, Marker, collision_candidates_1d,
+    };
+
+    fn test_data() -> Vec<BroadPhaseMarker> {
+        vec![
+            BroadPhaseMarker {
+                position: 0.0,
+                entity: Entity::from_index(EntityIndex::from_raw_u32(0).unwrap()),
+                render_entity: Entity::from_index(EntityIndex::from_raw_u32(0).unwrap()),
+                marker: Marker::Beginning,
+            },
+            BroadPhaseMarker {
+                position: 1.0,
+                entity: Entity::from_index(EntityIndex::from_raw_u32(0).unwrap()),
+                render_entity: Entity::from_index(EntityIndex::from_raw_u32(0).unwrap()),
+                marker: Marker::End,
+            },
+            BroadPhaseMarker {
+                position: 0.0,
+                entity: Entity::from_index(EntityIndex::from_raw_u32(1).unwrap()),
+                render_entity: Entity::from_index(EntityIndex::from_raw_u32(1).unwrap()),
+                marker: Marker::Beginning,
+            },
+            BroadPhaseMarker {
+                position: 0.5,
+                entity: Entity::from_index(EntityIndex::from_raw_u32(1).unwrap()),
+                render_entity: Entity::from_index(EntityIndex::from_raw_u32(1).unwrap()),
+                marker: Marker::End,
+            },
+        ]
+    }
+
+    #[test]
+    fn test_collision_candidates_1d() {
+        let mut data = test_data();
+        data.sort_by(|a, b| {
+            return a.partial_cmp(&b).unwrap().then(a.entity.cmp(&b.entity));
+        });
+        let candidates = collision_candidates_1d(&data);
+        println!("{candidates:?}");
+    }
 }
