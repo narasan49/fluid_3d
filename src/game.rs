@@ -5,11 +5,12 @@ use {character_controller::CharacterControllerPlugin, input_mode::InputModePlugi
 pub mod character_controller;
 pub mod input_mode;
 pub mod solid_body_motion;
+pub mod ui;
 
 pub struct GamePlugin;
 
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut bevy::app::App) {
-        app.add_plugins((CharacterControllerPlugin, InputModePlugin));
+        app.add_plugins((CharacterControllerPlugin, InputModePlugin, ui::GameUiPlugin));
     }
 }

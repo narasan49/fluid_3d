@@ -307,7 +307,8 @@ fn setup_scene(
         .with_children(|commands| {
             commands.spawn((
                 Camera3d::default(),
-                Transform::from_xyz(0.0, 1.0, 1.0).looking_at(Vec3::ZERO, Vec3::Y),
+                IsDefaultUiCamera,
+                Transform::from_xyz(0.0, 0.4, 1.0).looking_at(Vec3::ZERO, Vec3::Y),
             ));
         });
 
