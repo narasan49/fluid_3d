@@ -89,7 +89,7 @@ fn setup_scene(
 ) {
     let material_terrain = materials.add(Color::srgb(0.8, 0.8, 0.8));
     // 流体。底面をy=0に設定する。
-    let resolution = UVec3::new(128, 24, 64);
+    let resolution = UVec3::new(128, 18, 64);
     let fluid_half_size = 0.5 * resolution.as_vec3() * (grid_length.0 as f32);
     commands.spawn((
         Fluid3d {
@@ -105,7 +105,7 @@ fn setup_scene(
         Transform::from_translation(Vec3::new(0.0, fluid_half_size.y, 0.0)),
     ));
 
-    let resolution = UVec3::new(32, 32, 64);
+    let resolution = UVec3::new(16, 32, 32);
     let source_fluid_half_size = 0.5 * resolution.as_vec3() * (grid_length.0 as f32);
     commands
         .spawn((
@@ -144,7 +144,7 @@ fn setup_scene(
                     Transform::from_translation(Vec3::new(
                         0.0,
                         -0.05,
-                        -source_fluid_half_size.z * 0.5,
+                        -source_fluid_half_size.z * 0.8,
                     )),
                     Visibility::Inherited,
                 ))
