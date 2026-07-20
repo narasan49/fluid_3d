@@ -1,4 +1,5 @@
 #import fluid3d::fluid_uniform::FluidUniform
+#import fluid3d::interp::{trilinear_rgba16float}
 
 @group(0) @binding(0) var u0: texture_storage_3d<rgba16float, read>;
 @group(0) @binding(1) var u1: texture_storage_3d<rgba16float, write>;
@@ -16,7 +17,7 @@ fn advect_velocity(
 
     let backtraced_x = backtrace(u0, gid, fluid_uniform.dt);
     if is_inside(backtraced_x, vec3f(dim)) {
-        let backtraced_u = trilinear(u0, backtraced_x);
+        let backtraced_u = trilinear_rgba16float(u0, backtraced_x);
         textureStore(u1, gid, vec4f(backtraced_u, 0.0));
     } else {
         textureStore(u1, gid, vec4f(textureLoad(u0, gid)));
@@ -35,33 +36,7 @@ fn backtrace(
 ) -> vec3f {
     let velocity = textureLoad(u, x).xyz;
     let x_mid = vec3f(x) - 0.5 * dt * velocity;
-    let velocity_mid = trilinear(u, x_mid);
+    let velocity_mid = trilinear_rgba16float(u, x_mid);
 
     return vec3f(x) - dt * velocity_mid;
-}
-
-fn trilinear(
-    u: texture_storage_3d<rgba16float, read>,
-    x: vec3f,
-) -> vec3f {
-    let base = floor(x);
-    let fract = x - base;
-    let idx = vec3u(base);
-
-    let y = array<vec3f, 8>(
-        textureLoad(u, idx + vec3u(0, 0, 0)).xyz,
-        textureLoad(u, idx + vec3u(1, 0, 0)).xyz,
-        textureLoad(u, idx + vec3u(0, 1, 0)).xyz,
-        textureLoad(u, idx + vec3u(1, 1, 0)).xyz,
-        textureLoad(u, idx + vec3u(0, 0, 1)).xyz,
-        textureLoad(u, idx + vec3u(1, 0, 1)).xyz,
-        textureLoad(u, idx + vec3u(0, 1, 1)).xyz,
-        textureLoad(u, idx + vec3u(1, 1, 1)).xyz,
-    );
-
-    return mix(
-        mix(mix(y[0], y[1], fract.x), mix(y[2], y[3], fract.x), fract.y),
-        mix(mix(y[4], y[5], fract.x), mix(y[6], y[7], fract.x), fract.y),
-        fract.z
-    );
 }

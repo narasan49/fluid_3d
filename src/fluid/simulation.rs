@@ -86,6 +86,7 @@ impl Plugin for FluidSimulationPlugin {
     fn build(&self, app: &mut App) {
         load_shader_library!(app, "simulation/area_fraction.wgsl");
         load_shader_library!(app, "simulation/primitive_sdf.wgsl");
+        load_shader_library!(app, "simulation/interp.wgsl");
 
         app.add_plugins((
             FluidUniformPlugin,
