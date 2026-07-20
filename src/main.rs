@@ -13,7 +13,7 @@ use avian3d::{
     },
 };
 use bevy::{
-    camera_controller::free_camera::{FreeCamera, FreeCameraPlugin},
+    camera_controller::free_camera::{FreeCamera, FreeCameraPlugin, FreeCameraState},
     dev_tools::infinite_grid::{InfiniteGrid, InfiniteGridPlugin, InfiniteGridSettings},
     prelude::*,
     render::{
@@ -65,17 +65,24 @@ fn main() {
         .add_systems(Startup, setup_dev_tools)
         .add_systems(Startup, setup_scene)
         .add_systems(Update, setup_fluid_render)
-        .add_systems(Update, update_moving_object)
+        .add_systems(Update, (update_moving_object, toggle_free_camera))
         .insert_resource(Gravity(9.8 * Vec3::NEG_Y))
         .insert_resource(GridLength(1.0 / LENGTH_UNIT))
         .run();
 }
 
 fn setup_dev_tools(mut commands: Commands) {
+    let mut free_camera_state = FreeCameraState::default();
+    free_camera_state.enabled = false;
     commands.spawn((
         Camera3d::default(),
+        Camera {
+            is_active: false,
+            ..default()
+        },
         Transform::from_xyz(0.0, 0.5, 2.0).looking_at(Vec3::ZERO, Vec3::Y),
         FreeCamera::default(),
+        free_camera_state,
     ));
 
     commands.spawn((InfiniteGrid, InfiniteGridSettings::default()));
@@ -134,7 +141,7 @@ fn setup_scene(
             commands
                 .spawn((
                     FluidSource {
-                        avtive: true,
+                        active: true,
                         mode: FluidSourceMode::Source,
                     },
                     FluidSourceShape::Aabb {
@@ -271,21 +278,28 @@ fn setup_scene(
     ));
 
     let player_capsule = Capsule3d::new(0.05, 0.1);
-    commands.spawn((
-        Name::new("PlayerCapsule"),
-        Transform::from_xyz(
-            1.0,
-            player_capsule.half_length + player_capsule.radius + 10.0,
-            0.0,
-        ),
-        Mesh3d(meshes.add(player_capsule)),
-        MeshMaterial3d(materials.add(Color::srgb(0.8, 0.8, 0.0))),
-        player_capsule.collider(),
-        SolidShapeOnFluid::Capsule(player_capsule),
-        CharacterController,
-        RigidBody::Dynamic,
-        LockedAxes::ROTATION_LOCKED,
-    ));
+    commands
+        .spawn((
+            Name::new("PlayerCapsule"),
+            Transform::from_xyz(
+                1.0,
+                player_capsule.half_length + player_capsule.radius + 10.0,
+                0.0,
+            ),
+            Mesh3d(meshes.add(player_capsule)),
+            MeshMaterial3d(materials.add(Color::srgb(0.8, 0.8, 0.0))),
+            player_capsule.collider(),
+            SolidShapeOnFluid::Capsule(player_capsule),
+            CharacterController::default(),
+            RigidBody::Dynamic,
+            LockedAxes::ROTATION_LOCKED,
+        ))
+        .with_children(|commands| {
+            commands.spawn((
+                Camera3d::default(),
+                Transform::from_xyz(0.0, 1.0, 1.0).looking_at(Vec3::ZERO, Vec3::Y),
+            ));
+        });
 
     let moving_cube = Cuboid::from_size(Vec3::new(0.1, 0.2, 0.8));
     commands.spawn((
@@ -313,5 +327,23 @@ fn setup_fluid_render(
             resolution: fluid.resolution,
             half_size,
         });
+    }
+}
+
+fn toggle_free_camera(
+    mut q_free: Query<(&mut FreeCameraState, &mut Camera), With<FreeCamera>>,
+    mut q_player_camera: Query<&mut Camera, Without<FreeCamera>>,
+    mut q_player: Query<&mut CharacterController>,
+    input: Res<ButtonInput<KeyCode>>,
+) {
+    if input.just_pressed(KeyCode::KeyP) {
+        let (mut free_camera_state, mut camera) = q_free.single_mut().unwrap();
+        free_camera_state.enabled = !free_camera_state.enabled;
+        camera.is_active = free_camera_state.enabled;
+        let mut player_camera = q_player_camera.single_mut().unwrap();
+        player_camera.is_active = !free_camera_state.enabled;
+        for mut character_controller in &mut q_player {
+            character_controller.enabled = !free_camera_state.enabled;
+        }
     }
 }

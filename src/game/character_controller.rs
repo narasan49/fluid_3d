@@ -27,33 +27,44 @@ const DAMPING_RATE: f32 = 0.8;
 const JUMP_SPEED: f32 = 2.0;
 
 #[derive(Component)]
-pub struct CharacterController;
+pub struct CharacterController {
+    pub enabled: bool,
+}
+
+impl Default for CharacterController {
+    fn default() -> Self {
+        Self { enabled: true }
+    }
+}
 
 #[derive(Component)]
 pub struct Grounded;
 
 fn handle_character_input(
     time: Res<Time>,
-    mut query: Query<(&mut LinearVelocity, Has<Grounded>), With<CharacterController>>,
+    mut query: Query<(&mut LinearVelocity, &CharacterController, Has<Grounded>)>,
     input: Res<ButtonInput<KeyCode>>,
 ) {
     let mut direction = Vec3::ZERO;
-    if input.any_pressed([KeyCode::ArrowUp]) {
+    if input.any_pressed([KeyCode::ArrowUp, KeyCode::KeyW]) {
         direction -= Vec3::Z;
     }
-    if input.any_pressed([KeyCode::ArrowDown]) {
+    if input.any_pressed([KeyCode::ArrowDown, KeyCode::KeyS]) {
         direction += Vec3::Z;
     }
-    if input.any_pressed([KeyCode::ArrowLeft]) {
+    if input.any_pressed([KeyCode::ArrowLeft, KeyCode::KeyA]) {
         direction -= Vec3::X;
     }
-    if input.any_pressed([KeyCode::ArrowRight]) {
+    if input.any_pressed([KeyCode::ArrowRight, KeyCode::KeyD]) {
         direction += Vec3::X;
     }
     if direction == Vec3::ZERO {
         return;
     }
-    for (mut linear_velocity, grounded) in &mut query {
+    for (mut linear_velocity, controller, grounded) in &mut query {
+        if !controller.enabled {
+            continue;
+        }
         let delta = CHARACTER_ACCELERATION * direction.normalize() * time.delta_secs();
         linear_velocity.0 += delta;
 
