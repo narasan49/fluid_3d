@@ -109,7 +109,9 @@ impl FromWorld for ResolveOverlapPipeline {
                 ShaderStages::COMPUTE,
                 (
                     texture_storage_3d(TextureFormat::R32Float, StorageTextureAccess::ReadWrite),
+                    texture_storage_3d(TextureFormat::Rgba16Float, StorageTextureAccess::ReadWrite),
                     texture_storage_3d(TextureFormat::R32Float, StorageTextureAccess::ReadWrite),
+                    texture_storage_3d(TextureFormat::Rgba16Float, StorageTextureAccess::ReadOnly),
                     uniform_buffer::<OtherFluidUniform>(false),
                 ),
             ),
@@ -150,14 +152,14 @@ fn prepare_bind_groups(
 ) {
     for (entity, resources, _, others) in &query {
         let levelset_air_this = gpu_images.get(&resources.levelset_air0).unwrap();
+        let u0_this = gpu_images.get(&resources.u0).unwrap();
         let mut other_bind_groups = Vec::with_capacity(others.0.len());
         for other_entity in &others.0 {
             let Ok((_, other_resoures, other_uniform, _)) = query.get(*other_entity) else {
-                info!("Entity: {entity:?}, Other Entity: {other_entity:?}");
                 continue;
             };
-            // let (_, other_resoures, other_uniform, _) = query.get(*other_entity).unwrap();
             let levelset_air_other = gpu_images.get(&other_resoures.levelset_air0).unwrap();
+            let u0_other = gpu_images.get(&other_resoures.u0).unwrap();
             let other_fluid_uniform = OtherFluidUniform {
                 inverse_transform: other_uniform.transform.inverse(),
                 half_size: other_uniform.half_size,
@@ -170,7 +172,9 @@ fn prepare_bind_groups(
                 &pipeline_cache.get_bind_group_layout(&pipeline.bind_group_layout),
                 &BindGroupEntries::sequential((
                     &levelset_air_this.texture_view,
+                    &u0_this.texture_view,
                     &levelset_air_other.texture_view,
+                    &u0_other.texture_view,
                     other_fluid_uniform,
                 )),
             ));

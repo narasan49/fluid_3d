@@ -108,13 +108,13 @@ fn sort_and_sweep(
     }
 
     markers_x.sort_by(|a, b| {
-        return a.partial_cmp(&b).unwrap();
+        return a.partial_cmp(&b).unwrap().then(a.entity.cmp(&b.entity));
     });
     markers_y.sort_by(|a, b| {
-        return a.partial_cmp(&b).unwrap();
+        return a.partial_cmp(&b).unwrap().then(a.entity.cmp(&b.entity));
     });
     markers_z.sort_by(|a, b| {
-        return a.partial_cmp(&b).unwrap();
+        return a.partial_cmp(&b).unwrap().then(a.entity.cmp(&b.entity));
     });
 
     let collision_candidates_x = collision_candidates_1d(&markers_x);

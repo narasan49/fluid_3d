@@ -1,4 +1,5 @@
 #import fluid3d::fluid_uniform::FluidUniform
+#import fluid3d::interp::{trilinear_rw, trilinear_rgba16float}
 
 struct OtherFluidUniform {
     inverse_transform: mat4x4f,
@@ -6,9 +7,11 @@ struct OtherFluidUniform {
 }
 
 @group(0) @binding(0) var levelset_air_this: texture_storage_3d<r32float, read_write>;
+@group(0) @binding(1) var u0_this: texture_storage_3d<rgba16float, read_write>;
 // workaround: readアクセスで十分だが、wgpuの問題で型の異なるテクスチャでtextureDimensionsを使用すると、`redefinition of 'NagaRWDimensions3D'`のエラーとなってしまう。
-@group(0) @binding(1) var levelset_air_other: texture_storage_3d<r32float, read_write>;
-@group(0) @binding(2) var<uniform> fluid_uniform_other: OtherFluidUniform;
+@group(0) @binding(2) var levelset_air_other: texture_storage_3d<r32float, read_write>;
+@group(0) @binding(3) var u0_other: texture_storage_3d<rgba16float, read>;
+@group(0) @binding(4) var<uniform> fluid_uniform_other: OtherFluidUniform;
 
 @group(1) @binding(0) var<uniform> fluid_uniform_this: FluidUniform;
 
@@ -31,35 +34,11 @@ fn resolve_overlap(
     let dimf_other = vec3f(dim_other);
     let idx_other = uv_other * dimf_other;
 
-    let level_other = trilinear(levelset_air_other, idx_other);
+    let level_other = trilinear_rw(levelset_air_other, idx_other);
     let level_this = textureLoad(levelset_air_this, gid).x;
 
-    let new_level = min(level_other, level_this);
-    textureStore(levelset_air_this, gid, vec4f(new_level, 0.0, 0.0, 0.0));
-}
-
-fn trilinear(
-    levelset: texture_storage_3d<r32float, read_write>,
-    x: vec3f,
-) -> f32 {
-    let base = floor(x);
-    let fract = x - base;
-    let idx = vec3u(base);
-
-    let y = array<f32, 8>(
-        textureLoad(levelset, idx + vec3u(0, 0, 0)).x,
-        textureLoad(levelset, idx + vec3u(1, 0, 0)).x,
-        textureLoad(levelset, idx + vec3u(0, 1, 0)).x,
-        textureLoad(levelset, idx + vec3u(1, 1, 0)).x,
-        textureLoad(levelset, idx + vec3u(0, 0, 1)).x,
-        textureLoad(levelset, idx + vec3u(1, 0, 1)).x,
-        textureLoad(levelset, idx + vec3u(0, 1, 1)).x,
-        textureLoad(levelset, idx + vec3u(1, 1, 1)).x,
-    );
-
-    return mix(
-        mix(mix(y[0], y[1], fract.x), mix(y[2], y[3], fract.x), fract.y),
-        mix(mix(y[4], y[5], fract.x), mix(y[6], y[7], fract.x), fract.y),
-        fract.z
-    );
+    if level_other < level_this {
+        textureStore(levelset_air_this, gid, vec4f(level_other, 0.0, 0.0, 0.0));
+        textureStore(u0_this, gid, vec4f(trilinear_rgba16float(u0_other, idx_other), 0.0));
+    }
 }

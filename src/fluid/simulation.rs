@@ -262,6 +262,25 @@ fn run_simulation(
             }
         }
         SimulationState::Update => {
+            {
+                let mut pass =
+                    render_context
+                        .command_encoder()
+                        .begin_compute_pass(&ComputePassDescriptor {
+                            label: Some("merge_fluid_overlaps"),
+                            ..default()
+                        });
+                for (fluid, bind_groups, multigrid_config, multigrid_levels) in &query {
+                    pipelines.resolve_overlap_pipeline.dispatch(
+                        &mut pass,
+                        &pipeline_cache,
+                        &bind_groups.resolve_overlap_bind_groups,
+                        &bind_groups.fluid_uniform_bind_group,
+                        fluid.resolution,
+                        WORKGROUP_SIZE,
+                    );
+                }
+            }
             for (fluid, bind_groups, multigrid_config, multigrid_levels) in &query {
                 let mut pass =
                     render_context
@@ -288,15 +307,6 @@ fn run_simulation(
                     &bind_groups.update_fluid_sources_bind_group,
                     &bind_groups.fluid_uniform_bind_group,
                     &bind_groups.fluid_sources_uniform_bind_group,
-                    fluid.resolution,
-                    WORKGROUP_SIZE,
-                );
-
-                pipelines.resolve_overlap_pipeline.dispatch(
-                    &mut pass,
-                    &pipeline_cache,
-                    &bind_groups.resolve_overlap_bind_groups,
-                    &bind_groups.fluid_uniform_bind_group,
                     fluid.resolution,
                     WORKGROUP_SIZE,
                 );
