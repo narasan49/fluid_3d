@@ -33,7 +33,8 @@ use crate::{
         },
     },
     game::{
-        character_controller::{CharacterController, CharacterControllerPlugin},
+        character_controller::{CharacterController, Player},
+        input_mode::InputMode,
         solid_body_motion::{MovingObject, update_moving_object},
     },
     marching_cubes::{MarchingCubes, MarchingCubesPlugin},
@@ -59,8 +60,8 @@ fn main() {
         .add_plugins((
             Fluid3dPlugin,
             MarchingCubesPlugin,
-            CharacterControllerPlugin,
             FluidBoundsPlugin,
+            game::GamePlugin,
         ))
         .add_systems(Startup, setup_dev_tools)
         .add_systems(Startup, setup_scene)
@@ -68,6 +69,7 @@ fn main() {
         .add_systems(Update, (update_moving_object, toggle_free_camera))
         .insert_resource(Gravity(9.8 * Vec3::NEG_Y))
         .insert_resource(GridLength(1.0 / LENGTH_UNIT))
+        .insert_resource(InputMode::Game)
         .run();
 }
 
@@ -281,6 +283,7 @@ fn setup_scene(
     commands
         .spawn((
             Name::new("PlayerCapsule"),
+            Player,
             Transform::from_xyz(
                 1.0,
                 player_capsule.half_length + player_capsule.radius + 10.0,
