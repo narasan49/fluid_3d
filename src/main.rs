@@ -128,6 +128,7 @@ fn setup_scene(
                 2.0 * fluid_half_size.y + source_fluid_half_size.y - 0.15,
                 -fluid_half_size.z,
             )),
+            Visibility::Inherited,
         ))
         .with_children(|commands| {
             commands
@@ -145,6 +146,7 @@ fn setup_scene(
                         -0.05,
                         -source_fluid_half_size.z * 0.5,
                     )),
+                    Visibility::Inherited,
                 ))
                 .with_children(|commands| {
                     let cylinder = Cylinder::new(0.1, 0.4);
