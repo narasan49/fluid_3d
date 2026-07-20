@@ -66,7 +66,14 @@ fn main() {
         .add_systems(Startup, setup_dev_tools)
         .add_systems(Startup, setup_scene)
         .add_systems(Update, setup_fluid_render)
-        .add_systems(Update, (update_moving_object, toggle_free_camera))
+        .add_systems(
+            Update,
+            (
+                update_moving_object,
+                toggle_fluid_source,
+                toggle_free_camera,
+            ),
+        )
         .insert_resource(Gravity(9.8 * Vec3::NEG_Y))
         .insert_resource(GridLength(1.0 / LENGTH_UNIT))
         .insert_resource(InputMode::Game)
@@ -330,6 +337,14 @@ fn setup_fluid_render(
             resolution: fluid.resolution,
             half_size,
         });
+    }
+}
+
+fn toggle_fluid_source(mut query: Query<&mut FluidSource>, input: Res<ButtonInput<KeyCode>>) {
+    if input.just_pressed(KeyCode::KeyF) {
+        for mut fluid_source in &mut query {
+            fluid_source.active = !fluid_source.active;
+        }
     }
 }
 
