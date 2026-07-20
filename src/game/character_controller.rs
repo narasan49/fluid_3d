@@ -149,6 +149,6 @@ fn update_player_camera(
     let delta = accumulated_mouse_motion.delta;
 
     for mut transform in &mut query {
-        transform.rotate_local_y(delta.x * time.delta_secs() * 0.1);
+        transform.rotate_local_y(-delta.x * time.delta_secs() * 0.1);
     }
 }
