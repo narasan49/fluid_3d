@@ -12,7 +12,9 @@
             "args": [],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
-            "environment": [],
+            "environment": [{
+                "name": "BEVY_ASSET_ROOT", "value": "${workspaceFolder}"
+            }],
             "console": "internalConsole"
         }
 
