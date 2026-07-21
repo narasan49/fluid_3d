@@ -1,13 +1,13 @@
 use bevy::prelude::*;
 
-use crate::game::input_mode::InputMode;
+use crate::game::{input_mode::InputMode, scene::SceneRoot};
 
 pub struct GameUiPlugin;
 
 impl Plugin for GameUiPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, spwan_root)
-            .add_systems(Update, (toggle_menu, menu_action));
+            .add_systems(PostUpdate, (toggle_menu, menu_action));
     }
 }
 
@@ -52,15 +52,26 @@ fn spwan_root(mut commands: Commands) {
 }
 
 fn menu_action(
+    mut commands: Commands,
     interaction_query: Query<(&Interaction, &MenuAction), (Changed<Interaction>, With<Button>)>,
     mut app_exit_writer: MessageWriter<AppExit>,
     mut q_menu: Query<&mut Visibility, With<Menu>>,
+    q_scene: Query<Entity, With<SceneRoot>>,
     mut input_mode: ResMut<InputMode>,
 ) {
     for (interaction, menu_action) in &interaction_query {
         if *interaction == Interaction::Pressed {
             match menu_action {
-                MenuAction::Restart => {}
+                MenuAction::Restart => {
+                    for entity in &q_scene {
+                        commands.entity(entity).despawn();
+                        commands.run_system_cached(crate::setup_scene);
+                    }
+                    for mut visibility in &mut q_menu {
+                        *visibility = Visibility::Hidden;
+                    }
+                    *input_mode = InputMode::Game;
+                }
                 MenuAction::Quit => {
                     app_exit_writer.write(AppExit::Success);
                 }
@@ -106,7 +117,7 @@ fn button(text: &str) -> impl Bundle {
             height: px(50),
             border: UiRect::all(px(5)),
             justify_content: JustifyContent::Center,
-            align_content: AlignContent::Center,
+            align_items: AlignItems::Center,
             ..default()
         },
         BorderColor::all(Color::WHITE),

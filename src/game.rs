@@ -4,6 +4,7 @@ use {character_controller::CharacterControllerPlugin, input_mode::InputModePlugi
 
 pub mod character_controller;
 pub mod input_mode;
+pub mod scene;
 pub mod solid_body_motion;
 pub mod ui;
 
