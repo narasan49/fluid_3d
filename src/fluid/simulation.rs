@@ -29,7 +29,7 @@ use bevy::{
 };
 
 use crate::fluid::{
-    Fluid3d,
+    Fluid3d, FluidStatusRenderWorld,
     compute_pass::FluidComputePassPlugin,
     pipeline::FluidPipeline,
     simulation::{
@@ -129,7 +129,6 @@ impl Plugin for FluidSimulationPlugin {
 enum SimulationState {
     #[default]
     Loading,
-    Init,
     Update,
 }
 
@@ -181,6 +180,7 @@ fn update_simulation_state(
     pipelines: FluidPipelines,
     pipeline_cache: Res<PipelineCache>,
     mut state: ResMut<SimulationState>,
+    mut query: Query<&mut FluidStatusRenderWorld, With<InitializeBindGroup>>,
 ) {
     match *state {
         SimulationState::Loading => {
@@ -217,13 +217,23 @@ fn update_simulation_state(
                     .extrapolate_velocity_pipeline
                     .is_ready(&pipeline_cache)
             {
-                *state = SimulationState::Init;
+                *state = SimulationState::Update;
             }
         }
-        SimulationState::Init => {
-            *state = SimulationState::Update;
+        SimulationState::Update => {
+            for mut status in &mut query {
+                match *status {
+                    FluidStatusRenderWorld::Reset => {
+                        info!("Reset simulation");
+                        *status = FluidStatusRenderWorld::Uninitialized;
+                    }
+                    FluidStatusRenderWorld::Uninitialized => {
+                        *status = FluidStatusRenderWorld::Initialized;
+                    }
+                    FluidStatusRenderWorld::Initialized => {}
+                }
+            }
         }
-        SimulationState::Update => {}
     }
 }
 
@@ -234,6 +244,7 @@ fn run_simulation(
         SimulationBindGroups,
         &MultigridIterationGonfig,
         &MultigridNumLevels,
+        &FluidStatusRenderWorld,
     )>,
     solid_body_bind_group: Res<SolidBodyBufferBindGroup>,
     pipeline_cache: Res<PipelineCache>,
@@ -242,183 +253,175 @@ fn run_simulation(
 ) {
     match *state {
         SimulationState::Loading => {}
-        SimulationState::Init => {
-            for (fluid, bind_groups, _, _) in &query {
-                let mut pass =
-                    render_context
-                        .command_encoder()
-                        .begin_compute_pass(&ComputePassDescriptor {
-                            label: Some("init_fluid_3d"),
-                            ..default()
-                        });
-                info_once!("[once] initializing fluid");
-                pipelines.init_pipeline.dispatch(
-                    &pipeline_cache,
-                    &mut pass,
-                    bind_groups.init_bind_group,
-                    fluid.resolution,
-                    WORKGROUP_SIZE,
-                );
-            }
-        }
         SimulationState::Update => {
-            {
-                let mut pass =
-                    render_context
-                        .command_encoder()
-                        .begin_compute_pass(&ComputePassDescriptor {
-                            label: Some("merge_fluid_overlaps"),
-                            ..default()
-                        });
-                for (fluid, bind_groups, multigrid_config, multigrid_levels) in &query {
-                    pipelines.resolve_overlap_pipeline.dispatch(
-                        &mut pass,
-                        &pipeline_cache,
-                        &bind_groups.resolve_overlap_bind_groups,
-                        &bind_groups.fluid_uniform_bind_group,
-                        fluid.resolution,
-                        WORKGROUP_SIZE,
-                    );
+            for (fluid, bind_groups, multigrid_config, multigrid_levels, status) in &query {
+                match status {
+                    FluidStatusRenderWorld::Reset => {}
+                    FluidStatusRenderWorld::Uninitialized => {
+                        info!("initializing");
+                        let mut pass = render_context.command_encoder().begin_compute_pass(
+                            &ComputePassDescriptor {
+                                label: Some("init_fluid_3d"),
+                                ..default()
+                            },
+                        );
+                        info_once!("[once] initializing fluid");
+                        pipelines.init_pipeline.dispatch(
+                            &pipeline_cache,
+                            &mut pass,
+                            bind_groups.init_bind_group,
+                            fluid.resolution,
+                            WORKGROUP_SIZE,
+                        );
+                    }
+                    FluidStatusRenderWorld::Initialized => {
+                        let mut pass = render_context.command_encoder().begin_compute_pass(
+                            &ComputePassDescriptor {
+                                label: Some("run_fluid_3d"),
+                                ..default()
+                            },
+                        );
+
+                        info_once!("[once] running fluid simulation");
+                        pipelines.update_solid_pipeline.dispatch(
+                            &pipeline_cache,
+                            &mut pass,
+                            &bind_groups.update_solid_bind_group,
+                            &bind_groups.fluid_uniform_bind_group,
+                            &solid_body_bind_group,
+                            fluid.resolution,
+                            WORKGROUP_SIZE,
+                        );
+
+                        pipelines.update_fluid_sources_pipeline.dispatch(
+                            &mut pass,
+                            &pipeline_cache,
+                            &bind_groups.update_fluid_sources_bind_group,
+                            &bind_groups.fluid_uniform_bind_group,
+                            &bind_groups.fluid_sources_uniform_bind_group,
+                            fluid.resolution,
+                            WORKGROUP_SIZE,
+                        );
+
+                        pipelines.resolve_overlap_pipeline.dispatch(
+                            &mut pass,
+                            &pipeline_cache,
+                            &bind_groups.resolve_overlap_bind_groups,
+                            &bind_groups.fluid_uniform_bind_group,
+                            fluid.resolution,
+                            WORKGROUP_SIZE,
+                        );
+
+                        pipelines.update_fluid_fraction_pipeline.dispatch(
+                            &pipeline_cache,
+                            &mut pass,
+                            &bind_groups.update_fluid_fraction_bind_group,
+                            fluid.resolution,
+                            WORKGROUP_SIZE,
+                        );
+
+                        pipelines.advect_velocity_pipeline.dispatch(
+                            &pipeline_cache,
+                            &mut pass,
+                            &bind_groups.advect_velocity_bind_group,
+                            &bind_groups.fluid_uniform_bind_group,
+                            fluid.resolution,
+                            WORKGROUP_SIZE,
+                        );
+
+                        pipelines.apply_forces_pipeline.dispatch(
+                            &pipeline_cache,
+                            &mut pass,
+                            &bind_groups.apply_forces_bind_group,
+                            &bind_groups.fluid_uniform_bind_group,
+                            fluid.resolution,
+                            WORKGROUP_SIZE,
+                        );
+
+                        pipelines.collocated_to_mac_pipeline.dispatch(
+                            &mut pass,
+                            &pipeline_cache,
+                            &bind_groups.collocated_to_mac_bind_group,
+                            &bind_groups.fluid_uniform_bind_group,
+                            fluid.resolution,
+                            WORKGROUP_SIZE,
+                        );
+
+                        pipelines.divergence_pipeline.dispatch(
+                            &pipeline_cache,
+                            &mut pass,
+                            &bind_groups.divergence_bind_group,
+                            &bind_groups.fluid_uniform_bind_group,
+                            fluid.resolution,
+                            WORKGROUP_SIZE,
+                        );
+
+                        pipelines.multigrid_projection_pipeline.dispatch(
+                            &pipeline_cache,
+                            &mut pass,
+                            &bind_groups.multigrid_projection_bind_groups,
+                            &bind_groups.fluid_uniform_bind_group,
+                            multigrid_config,
+                            multigrid_levels.0,
+                            fluid.resolution,
+                            WORKGROUP_SIZE,
+                        );
+
+                        pipelines.solve_velocity_pipeline.dispatch(
+                            &pipeline_cache,
+                            &mut pass,
+                            &bind_groups.solve_velocity_bind_group,
+                            &bind_groups.fluid_uniform_bind_group,
+                            fluid.resolution,
+                            WORKGROUP_SIZE,
+                        );
+
+                        pipelines.extrapolate_velocity_pipeline.dispatch(
+                            &mut pass,
+                            &pipeline_cache,
+                            bind_groups.extrapolate_velocity_bind_groups,
+                            fluid.resolution,
+                            WORKGROUP_SIZE,
+                        );
+
+                        pipelines.mac_to_collocated_pipeline.dispatch(
+                            &mut pass,
+                            &pipeline_cache,
+                            &bind_groups.mac_to_collocated_bind_group,
+                            fluid.resolution,
+                            WORKGROUP_SIZE,
+                        );
+
+                        pipelines.advect_levelset_pipeline.dispatch(
+                            &pipeline_cache,
+                            &mut pass,
+                            &bind_groups.advect_levelset_bind_group,
+                            &bind_groups.fluid_uniform_bind_group,
+                            fluid.resolution,
+                            WORKGROUP_SIZE,
+                        );
+
+                        reinitialize_levelset_dispatch(
+                            &pipelines.fim_init_pipeline,
+                            &pipelines.fim_init_labels_pipeline,
+                            &pipelines.fim_update_pipeline,
+                            &pipeline_cache,
+                            &mut pass,
+                            &bind_groups.reinitialize_levelset_bind_groups,
+                            fluid.resolution,
+                            WORKGROUP_SIZE,
+                        );
+
+                        pipelines.update_grad_levelset_pipeline.dispatch(
+                            &pipeline_cache,
+                            &mut pass,
+                            &bind_groups.update_grad_levelset_bind_group,
+                            &bind_groups.fluid_uniform_bind_group,
+                            fluid.resolution,
+                            WORKGROUP_SIZE,
+                        );
+                    }
                 }
-            }
-            for (fluid, bind_groups, multigrid_config, multigrid_levels) in &query {
-                let mut pass =
-                    render_context
-                        .command_encoder()
-                        .begin_compute_pass(&ComputePassDescriptor {
-                            label: Some("run_fluid_3d"),
-                            ..default()
-                        });
-
-                info_once!("[once] running fluid simulation");
-                pipelines.update_solid_pipeline.dispatch(
-                    &pipeline_cache,
-                    &mut pass,
-                    &bind_groups.update_solid_bind_group,
-                    &bind_groups.fluid_uniform_bind_group,
-                    &solid_body_bind_group,
-                    fluid.resolution,
-                    WORKGROUP_SIZE,
-                );
-
-                pipelines.update_fluid_sources_pipeline.dispatch(
-                    &mut pass,
-                    &pipeline_cache,
-                    &bind_groups.update_fluid_sources_bind_group,
-                    &bind_groups.fluid_uniform_bind_group,
-                    &bind_groups.fluid_sources_uniform_bind_group,
-                    fluid.resolution,
-                    WORKGROUP_SIZE,
-                );
-
-                pipelines.update_fluid_fraction_pipeline.dispatch(
-                    &pipeline_cache,
-                    &mut pass,
-                    &bind_groups.update_fluid_fraction_bind_group,
-                    fluid.resolution,
-                    WORKGROUP_SIZE,
-                );
-
-                pipelines.advect_velocity_pipeline.dispatch(
-                    &pipeline_cache,
-                    &mut pass,
-                    &bind_groups.advect_velocity_bind_group,
-                    &bind_groups.fluid_uniform_bind_group,
-                    fluid.resolution,
-                    WORKGROUP_SIZE,
-                );
-
-                pipelines.apply_forces_pipeline.dispatch(
-                    &pipeline_cache,
-                    &mut pass,
-                    &bind_groups.apply_forces_bind_group,
-                    &bind_groups.fluid_uniform_bind_group,
-                    fluid.resolution,
-                    WORKGROUP_SIZE,
-                );
-
-                pipelines.collocated_to_mac_pipeline.dispatch(
-                    &mut pass,
-                    &pipeline_cache,
-                    &bind_groups.collocated_to_mac_bind_group,
-                    &bind_groups.fluid_uniform_bind_group,
-                    fluid.resolution,
-                    WORKGROUP_SIZE,
-                );
-
-                pipelines.divergence_pipeline.dispatch(
-                    &pipeline_cache,
-                    &mut pass,
-                    &bind_groups.divergence_bind_group,
-                    &bind_groups.fluid_uniform_bind_group,
-                    fluid.resolution,
-                    WORKGROUP_SIZE,
-                );
-
-                pipelines.multigrid_projection_pipeline.dispatch(
-                    &pipeline_cache,
-                    &mut pass,
-                    &bind_groups.multigrid_projection_bind_groups,
-                    &bind_groups.fluid_uniform_bind_group,
-                    multigrid_config,
-                    multigrid_levels.0,
-                    fluid.resolution,
-                    WORKGROUP_SIZE,
-                );
-
-                pipelines.solve_velocity_pipeline.dispatch(
-                    &pipeline_cache,
-                    &mut pass,
-                    &bind_groups.solve_velocity_bind_group,
-                    &bind_groups.fluid_uniform_bind_group,
-                    fluid.resolution,
-                    WORKGROUP_SIZE,
-                );
-
-                pipelines.extrapolate_velocity_pipeline.dispatch(
-                    &mut pass,
-                    &pipeline_cache,
-                    bind_groups.extrapolate_velocity_bind_groups,
-                    fluid.resolution,
-                    WORKGROUP_SIZE,
-                );
-
-                pipelines.mac_to_collocated_pipeline.dispatch(
-                    &mut pass,
-                    &pipeline_cache,
-                    &bind_groups.mac_to_collocated_bind_group,
-                    fluid.resolution,
-                    WORKGROUP_SIZE,
-                );
-
-                pipelines.advect_levelset_pipeline.dispatch(
-                    &pipeline_cache,
-                    &mut pass,
-                    &bind_groups.advect_levelset_bind_group,
-                    &bind_groups.fluid_uniform_bind_group,
-                    fluid.resolution,
-                    WORKGROUP_SIZE,
-                );
-
-                reinitialize_levelset_dispatch(
-                    &pipelines.fim_init_pipeline,
-                    &pipelines.fim_init_labels_pipeline,
-                    &pipelines.fim_update_pipeline,
-                    &pipeline_cache,
-                    &mut pass,
-                    &bind_groups.reinitialize_levelset_bind_groups,
-                    fluid.resolution,
-                    WORKGROUP_SIZE,
-                );
-
-                pipelines.update_grad_levelset_pipeline.dispatch(
-                    &pipeline_cache,
-                    &mut pass,
-                    &bind_groups.update_grad_levelset_bind_group,
-                    &bind_groups.fluid_uniform_bind_group,
-                    fluid.resolution,
-                    WORKGROUP_SIZE,
-                );
             }
         }
     }

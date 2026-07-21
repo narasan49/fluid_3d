@@ -1,6 +1,10 @@
 use bevy::{
     prelude::*,
-    render::extract_component::{ExtractComponent, ExtractComponentPlugin},
+    render::{
+        MainWorld, RenderApp,
+        extract_component::{ExtractComponent, ExtractComponentPlugin},
+        sync_world::RenderEntity,
+    },
 };
 
 use crate::fluid::{
@@ -48,11 +52,17 @@ impl Plugin for Fluid3dPlugin {
                 ExtractComponentPlugin::<BoundaryConditions>::default(),
             ))
             .add_systems(Update, setup_fluid_component);
+
+        let Some(render_app) = app.get_sub_app_mut(RenderApp) else {
+            return;
+        };
+
+        render_app.add_systems(ExtractSchedule, extract_fluid_status);
     }
 }
 
 #[derive(Component, ExtractComponent, Clone)]
-#[require(Transform, FluidSourcesUniform, BoundaryConditions)]
+#[require(Transform, FluidSourcesUniform, BoundaryConditions, FluidStatus)]
 pub struct Fluid3d {
     pub resolution: UVec3,
     pub rho: f32,
@@ -98,6 +108,36 @@ impl FluidBoundaryMethod {
         match self {
             FluidBoundaryMethod::Wall => 0u32,
             FluidBoundaryMethod::Open => 1u32,
+        }
+    }
+}
+
+#[derive(Component, Default)]
+pub enum FluidStatus {
+    #[default]
+    RequestReset,
+    Running,
+}
+
+#[derive(Component)]
+pub enum FluidStatusRenderWorld {
+    Reset,
+    Uninitialized,
+    Initialized,
+}
+
+fn extract_fluid_status(mut commands: Commands, mut main_world: ResMut<MainWorld>) {
+    let mut fluid_status_query = main_world.query::<(RenderEntity, &mut FluidStatus)>();
+
+    for (render_entity, mut fluid_status) in fluid_status_query.iter_mut(&mut main_world) {
+        match *fluid_status {
+            FluidStatus::RequestReset => {
+                commands
+                    .entity(render_entity)
+                    .insert(FluidStatusRenderWorld::Reset);
+                *fluid_status = FluidStatus::Running;
+            }
+            FluidStatus::Running => {}
         }
     }
 }
