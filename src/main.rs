@@ -130,7 +130,10 @@ fn setup_scene(
                 LockedAxes::ROTATION_LOCKED,
                 children![(
                     Camera3d::default(),
-                    IsDefaultUiCamera,
+                    Camera {
+                        order: 1,
+                        ..default()
+                    },
                     Transform::from_xyz(0.0, 0.4, 1.0).looking_at(Vec3::ZERO, Vec3::Y),
                 )]
             ),
@@ -183,11 +186,13 @@ fn toggle_free_camera(
     input: Res<ButtonInput<KeyCode>>,
 ) {
     if input.just_pressed(KeyCode::KeyP) {
-        let (mut free_camera_state, mut camera) = q_free.single_mut().unwrap();
+        let (mut free_camera_state, mut free_camera) = q_free.single_mut().unwrap();
         free_camera_state.enabled = !free_camera_state.enabled;
-        camera.is_active = free_camera_state.enabled;
+        free_camera.is_active = free_camera_state.enabled;
+        free_camera.order = if free_camera_state.enabled { 1 } else { 0 };
         let mut player_camera = q_player_camera.single_mut().unwrap();
         player_camera.is_active = !free_camera_state.enabled;
+        player_camera.order = if free_camera_state.enabled { 0 } else { 1 };
         for mut character_controller in &mut q_player {
             character_controller.enabled = !free_camera_state.enabled;
         }
