@@ -29,7 +29,7 @@ use bevy::{
 };
 
 use crate::fluid::{
-    Fluid3d, FluidStatusRenderWorld,
+    Fluid3d, FluidPaused, FluidStatusRenderWorld,
     compute_pass::FluidComputePassPlugin,
     pipeline::FluidPipeline,
     simulation::{
@@ -180,7 +180,7 @@ fn update_simulation_state(
     pipelines: FluidPipelines,
     pipeline_cache: Res<PipelineCache>,
     mut state: ResMut<SimulationState>,
-    mut query: Query<&mut FluidStatusRenderWorld, With<InitializeBindGroup>>,
+    mut query: Query<(&mut FluidStatusRenderWorld, &FluidPaused), With<InitializeBindGroup>>,
 ) {
     match *state {
         SimulationState::Loading => {
@@ -221,7 +221,10 @@ fn update_simulation_state(
             }
         }
         SimulationState::Update => {
-            for mut status in &mut query {
+            for (mut status, paused) in &mut query {
+                if paused.0 {
+                    continue;
+                }
                 match *status {
                     FluidStatusRenderWorld::Reset => {
                         info!("Reset simulation");
@@ -245,6 +248,7 @@ fn run_simulation(
         &MultigridIterationGonfig,
         &MultigridNumLevels,
         &FluidStatusRenderWorld,
+        &FluidPaused,
     )>,
     solid_body_bind_group: Res<SolidBodyBufferBindGroup>,
     pipeline_cache: Res<PipelineCache>,
@@ -254,7 +258,10 @@ fn run_simulation(
     match *state {
         SimulationState::Loading => {}
         SimulationState::Update => {
-            for (fluid, bind_groups, multigrid_config, multigrid_levels, status) in &query {
+            for (fluid, bind_groups, multigrid_config, multigrid_levels, status, paused) in &query {
+                if paused.0 {
+                    continue;
+                }
                 match status {
                     FluidStatusRenderWorld::Reset => {}
                     FluidStatusRenderWorld::Uninitialized => {

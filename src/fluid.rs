@@ -50,8 +50,9 @@ impl Plugin for Fluid3dPlugin {
                 ExtractComponentPlugin::<Fluid3d>::default(),
                 ExtractComponentPlugin::<FluidResources>::default(),
                 ExtractComponentPlugin::<BoundaryConditions>::default(),
+                ExtractComponentPlugin::<FluidPaused>::default(),
             ))
-            .add_systems(Update, setup_fluid_component);
+            .add_systems(Update, (setup_fluid_component, update_fluid_pause));
 
         let Some(render_app) = app.get_sub_app_mut(RenderApp) else {
             return;
@@ -62,7 +63,13 @@ impl Plugin for Fluid3dPlugin {
 }
 
 #[derive(Component, ExtractComponent, Clone)]
-#[require(Transform, FluidSourcesUniform, BoundaryConditions, FluidStatus)]
+#[require(
+    Transform,
+    FluidSourcesUniform,
+    BoundaryConditions,
+    FluidStatus,
+    FluidPaused
+)]
 pub struct Fluid3d {
     pub resolution: UVec3,
     pub rho: f32,
@@ -139,6 +146,16 @@ fn extract_fluid_status(mut commands: Commands, mut main_world: ResMut<MainWorld
             }
             FluidStatus::Running => {}
         }
+    }
+}
+
+#[derive(Component, ExtractComponent, Clone, Default)]
+pub struct FluidPaused(pub bool);
+
+fn update_fluid_pause(mut query: Query<&mut FluidPaused>, time: Res<Time<Virtual>>) {
+    let game_paused = time.is_paused();
+    for mut pause in &mut query {
+        pause.0 = game_paused;
     }
 }
 
