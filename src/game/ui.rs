@@ -34,20 +34,31 @@ fn spwan_root(mut commands: Commands) {
             justify_content: JustifyContent::Center,
             ..default()
         },
-        children![(
-            Menu,
-            Visibility::Hidden,
-            Node {
-                flex_direction: FlexDirection::Column,
-                align_items: AlignItems::Center,
-                ..default()
-            },
-            children![
-                (MenuAction::Resume, button("Resume")),
-                (MenuAction::Restart, button("Restart")),
-                (MenuAction::Quit, button("Quit")),
-            ],
-        )],
+        children![
+            (
+                Menu,
+                Visibility::Hidden,
+                Node {
+                    flex_direction: FlexDirection::Column,
+                    align_items: AlignItems::Center,
+                    ..default()
+                },
+                children![
+                    (MenuAction::Resume, button("Resume")),
+                    (MenuAction::Restart, button("Restart")),
+                    (MenuAction::Quit, button("Quit")),
+                ],
+            ),
+            (
+                Text::new("WASD: Move / Mouse: Camera Move / Space: Jump / Esc: Menu / P: Toggle Free Camera "),
+                Node {
+                    left: px(10),
+                    bottom: px(10),
+                    position_type: PositionType::Absolute,
+                    ..default()
+                },
+            )
+        ],
     ));
 }
 
