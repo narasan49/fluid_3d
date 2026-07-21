@@ -114,11 +114,13 @@ fn setup_scene(
             (
                 Name::new("PlayerCapsule"),
                 Player,
-                Transform::from_xyz(
-                    1.0,
-                    player_capsule.half_length + player_capsule.radius + 10.0,
-                    0.0,
-                ),
+                Transform::default()
+                    .with_rotation(Quat::from_rotation_y(std::f32::consts::FRAC_PI_2))
+                    .with_translation(Vec3::new(
+                        1.0,
+                        player_capsule.half_length + player_capsule.radius + 10.0,
+                        0.0,
+                    )),
                 Mesh3d(meshes.add(player_capsule)),
                 MeshMaterial3d(materials.add(Color::srgb(0.8, 0.8, 0.0))),
                 player_capsule.collider(),
