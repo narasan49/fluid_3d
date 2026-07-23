@@ -1,9 +1,11 @@
 #import fluid3d::fluid_uniform::{FluidUniform, BOUNDARY_OPEN, BOUNDARY_WALL}
+#import fluid3d::constants::APRON_WIDTH
 
 @group(0) @binding(0) var u_mac: texture_storage_3d<r16float, write>;
 @group(0) @binding(1) var v_mac: texture_storage_3d<r16float, write>;
 @group(0) @binding(2) var w_mac: texture_storage_3d<r16float, write>;
 @group(0) @binding(3) var u1: texture_storage_3d<rgba16float, read>;
+@group(0) @binding(4) var non_solid_fraction: texture_storage_3d<rgba16float, read>;
 
 @group(1) @binding(0) var<uniform> fluid_uniform: FluidUniform;
 
@@ -19,63 +21,36 @@ fn collocated_to_mac(
     if any(gid >= dim_collocated) {
         return;
     }
-    let u_plus = textureLoad(u1, gid).xyz;
+    let gid_col = gid + vec3u(APRON_WIDTH);
+    let u_plus = textureLoad(u1, gid_col).xyz;
     let u_minus = vec3f(
-        textureLoad(u1, gid - X).x,
-        textureLoad(u1, gid - Y).y,
-        textureLoad(u1, gid - Z).z,
+        textureLoad(u1, gid_col - X).x,
+        textureLoad(u1, gid_col - Y).y,
+        textureLoad(u1, gid_col - Z).z,
     );
     let u = 0.5 * (u_plus + u_minus);
 
-    if all(gid < dim_collocated + X) {
-        if gid.x == 0 {
-            if fluid_uniform.boundary_condition_min.x == BOUNDARY_OPEN {
-                textureStore(u_mac, gid, vec4f(u_plus.x, 0.0, 0.0, 0.0));
-            } else {
-                textureStore(u_mac, gid, vec4f(0.0));
-            }
-        } else if gid.x == dim_collocated.x {
-            if fluid_uniform.boundary_condition_max.x == BOUNDARY_OPEN {
-                textureStore(u_mac, gid, vec4f(u_minus.x, 0.0, 0.0, 0.0));
-            } else {
-                textureStore(u_mac, gid, vec4f(0.0));
-            }
+    let f = textureLoad(non_solid_fraction, gid).xyz;
+
+    if all(gid < fluid_uniform.resolution + X) {
+        if f.x == 0.0 {
+            textureStore(u_mac, gid, vec4f(0.0));
         } else {
             textureStore(u_mac, gid, vec4f(u.x, 0.0, 0.0, 0.0));
         }
     }
 
-    if all(gid < dim_collocated + Y) {
-        if gid.y == 0 {
-            if fluid_uniform.boundary_condition_min.y == BOUNDARY_OPEN {
-                textureStore(v_mac, gid, vec4f(u_plus.y, 0.0, 0.0, 0.0));
-            } else {
-                textureStore(v_mac, gid, vec4f(0.0));
-            }
-        } else if gid.y == dim_collocated.y {
-            if fluid_uniform.boundary_condition_max.y == BOUNDARY_OPEN {
-                textureStore(v_mac, gid, vec4f(u_minus.y, 0.0, 0.0, 0.0));
-            } else {
-                textureStore(v_mac, gid, vec4f(0.0));
-            }
+    if all(gid < fluid_uniform.resolution + Y) {
+        if f.y == 0.0 {
+            textureStore(v_mac, gid, vec4f(0.0));
         } else {
             textureStore(v_mac, gid, vec4f(u.y, 0.0, 0.0, 0.0));
         }
     }
 
-    if all(gid < dim_collocated + Z) {
-        if gid.z == 0 {
-            if fluid_uniform.boundary_condition_min.z == BOUNDARY_OPEN {
-                textureStore(w_mac, gid, vec4f(u_plus.z, 0.0, 0.0, 0.0));
-            } else {
-                textureStore(w_mac, gid, vec4f(0.0));
-            }
-        } else if gid.z == dim_collocated.z {
-            if fluid_uniform.boundary_condition_max.z == BOUNDARY_OPEN {
-                textureStore(w_mac, gid, vec4f(u_minus.z, 0.0, 0.0, 0.0));
-            } else {
-                textureStore(w_mac, gid, vec4f(0.0));
-            }
+    if all(gid < fluid_uniform.resolution + Z) {
+        if f.z == 0.0 {
+            textureStore(w_mac, gid, vec4f(0.0));
         } else {
             textureStore(w_mac, gid, vec4f(u.z, 0.0, 0.0, 0.0));
         }

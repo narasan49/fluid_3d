@@ -140,6 +140,8 @@ pub struct CollocatedToMacResource {
     pub w_mac: Handle<Image>,
     #[storage_texture(3, image_format = Rgba16Float, dimension = "3d", access = ReadOnly)]
     pub u1: Handle<Image>,
+    #[storage_texture(4, image_format = Rgba16Float, dimension = "3d", access = ReadOnly)]
+    pub non_solid_fraction: Handle<Image>,
 }
 
 impl CollocatedToMacResource {
@@ -149,6 +151,7 @@ impl CollocatedToMacResource {
             v_mac: resources.v_mac.clone(),
             w_mac: resources.w_mac.clone(),
             u1: resources.u1.clone(),
+            non_solid_fraction: resources.non_solid_fraction.clone(),
         }
     }
 }

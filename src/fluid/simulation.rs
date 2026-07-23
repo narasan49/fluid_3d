@@ -75,7 +75,9 @@ use crate::fluid::{
         update_levelset_grad::{
             UpdateLevelSetGradBindGroup, UpdateLevelSetGradPass, UpdateLevelSetGradPipeline,
         },
-        update_solid::{UpdateSolidBindGroup, UpdateSolidPass, UpdateSolidPipeline},
+        update_solid::{
+            UpdateSolidAndApronBindGroup, UpdateSolidAndApronPass, UpdateSolidAndApronPipeline,
+        },
     },
     workgroup::WORKGROUP_SIZE,
 };
@@ -87,6 +89,7 @@ impl Plugin for FluidSimulationPlugin {
         load_shader_library!(app, "simulation/area_fraction.wgsl");
         load_shader_library!(app, "simulation/primitive_sdf.wgsl");
         load_shader_library!(app, "simulation/interp.wgsl");
+        load_shader_library!(app, "simulation/constants.wgsl");
 
         app.add_plugins((
             FluidUniformPlugin,
@@ -96,7 +99,7 @@ impl Plugin for FluidSimulationPlugin {
         ))
         .add_plugins((
             FluidComputePassPlugin::<InitializePass>::default(),
-            FluidComputePassPlugin::<UpdateSolidPass>::default(),
+            FluidComputePassPlugin::<UpdateSolidAndApronPass>::default(),
             FluidComputePassPlugin::<UpdateFluidSourcesPass>::default(),
             FluidComputePassPlugin::<UpdateAreaFractionsPass>::default(),
             FluidComputePassPlugin::<AdvectVelocityPass>::default(),
@@ -138,7 +141,7 @@ struct SimulationBindGroups {
     fluid_sources_uniform_bind_group: &'static FluidSourcesUniformBindGroup,
     resolve_overlap_bind_groups: &'static ResolveOverlapBindGroups,
     init_bind_group: &'static InitializeBindGroup,
-    update_solid_bind_group: &'static UpdateSolidBindGroup,
+    update_solid_bind_group: &'static UpdateSolidAndApronBindGroup,
     update_fluid_sources_bind_group: &'static UpdateFluidSourcesBindGroup,
     update_fluid_fraction_bind_group: &'static UpdateAreaFractionsBindGroup,
     advect_velocity_bind_group: &'static AdvectVelocityBindGroup,
@@ -157,7 +160,7 @@ struct SimulationBindGroups {
 #[derive(SystemParam)]
 struct FluidPipelines<'w> {
     init_pipeline: Res<'w, InitializePipeline>,
-    update_solid_pipeline: Res<'w, UpdateSolidPipeline>,
+    update_solid_pipeline: Res<'w, UpdateSolidAndApronPipeline>,
     update_fluid_sources_pipeline: Res<'w, UpdateFluidSourcesPipeline>,
     resolve_overlap_pipeline: Res<'w, ResolveOverlapPipeline>,
     update_fluid_fraction_pipeline: Res<'w, UpdateAreaFractionsPipeline>,
@@ -277,7 +280,7 @@ fn run_simulation(
                             &pipeline_cache,
                             &mut pass,
                             bind_groups.init_bind_group,
-                            fluid.resolution,
+                            fluid.resolution_with_apron(),
                             WORKGROUP_SIZE,
                         );
                     }
@@ -296,7 +299,7 @@ fn run_simulation(
                             &bind_groups.update_solid_bind_group,
                             &bind_groups.fluid_uniform_bind_group,
                             &solid_body_bind_group,
-                            fluid.resolution,
+                            fluid.resolution_with_apron(),
                             WORKGROUP_SIZE,
                         );
 
@@ -306,7 +309,7 @@ fn run_simulation(
                             &bind_groups.update_fluid_sources_bind_group,
                             &bind_groups.fluid_uniform_bind_group,
                             &bind_groups.fluid_sources_uniform_bind_group,
-                            fluid.resolution,
+                            fluid.resolution_with_apron(),
                             WORKGROUP_SIZE,
                         );
 
@@ -315,7 +318,7 @@ fn run_simulation(
                             &pipeline_cache,
                             &bind_groups.resolve_overlap_bind_groups,
                             &bind_groups.fluid_uniform_bind_group,
-                            fluid.resolution,
+                            fluid.resolution_with_apron(),
                             WORKGROUP_SIZE,
                         );
 
@@ -332,7 +335,7 @@ fn run_simulation(
                             &mut pass,
                             &bind_groups.advect_velocity_bind_group,
                             &bind_groups.fluid_uniform_bind_group,
-                            fluid.resolution,
+                            fluid.resolution_with_apron(),
                             WORKGROUP_SIZE,
                         );
 
@@ -341,7 +344,7 @@ fn run_simulation(
                             &mut pass,
                             &bind_groups.apply_forces_bind_group,
                             &bind_groups.fluid_uniform_bind_group,
-                            fluid.resolution,
+                            fluid.resolution_with_apron(),
                             WORKGROUP_SIZE,
                         );
 
@@ -404,7 +407,7 @@ fn run_simulation(
                             &mut pass,
                             &bind_groups.advect_levelset_bind_group,
                             &bind_groups.fluid_uniform_bind_group,
-                            fluid.resolution,
+                            fluid.resolution_with_apron(),
                             WORKGROUP_SIZE,
                         );
 
@@ -415,7 +418,7 @@ fn run_simulation(
                             &pipeline_cache,
                             &mut pass,
                             &bind_groups.reinitialize_levelset_bind_groups,
-                            fluid.resolution,
+                            fluid.resolution_with_apron(),
                             WORKGROUP_SIZE,
                         );
 

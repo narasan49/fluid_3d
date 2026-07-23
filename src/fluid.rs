@@ -31,7 +31,7 @@ use crate::fluid::{
         solve_velocity::SolveVelocityResource,
         update_area_fractions::UpdateAreaFractionsResource,
         update_levelset_grad::UpdateLevelSetGradResource,
-        update_solid::UpdateSolidResource,
+        update_solid::UpdateSolidAndApronResource,
     },
 };
 
@@ -40,6 +40,8 @@ pub mod pipeline;
 pub mod resources;
 pub mod simulation;
 pub mod workgroup;
+
+pub const APRON_WIDTH: u32 = 1;
 
 pub struct Fluid3dPlugin;
 
@@ -74,6 +76,22 @@ pub struct Fluid3d {
     pub resolution: UVec3,
     pub rho: f32,
     pub gravity: Vec3,
+}
+
+impl Default for Fluid3d {
+    fn default() -> Self {
+        Self {
+            resolution: UVec3::splat(64),
+            rho: 997.0,
+            gravity: 9.8 * Vec3::NEG_Y,
+        }
+    }
+}
+
+impl Fluid3d {
+    pub fn resolution_with_apron(&self) -> UVec3 {
+        self.resolution + UVec3::splat(2 * APRON_WIDTH)
+    }
 }
 
 #[derive(Component, ExtractComponent, Clone, Default)]
@@ -169,7 +187,7 @@ fn setup_fluid_component(
     mut images: ResMut<Assets<Image>>,
 ) {
     for (entity, fluid3d, boundary_conditions, transform) in &query {
-        let resources = FluidResources::new(&mut images, fluid3d.resolution);
+        let resources = FluidResources::new(&mut images, fluid3d.resolution, APRON_WIDTH);
         let half_size = 0.5 * fluid3d.resolution.as_vec3() * (grid_length.0 as f32);
         let fluid_uniform = FluidUniform {
             dx: grid_length.0,
@@ -184,7 +202,7 @@ fn setup_fluid_component(
         };
         let init_resource = InitializeResource::new(&resources);
 
-        let update_solid_resource = UpdateSolidResource::new(&resources);
+        let update_solid_resource = UpdateSolidAndApronResource::new(&resources);
         let update_fluid_sources_resource = UpdateFluidSourcesResource::new(&resources);
         let update_fluid_fraction_resource = UpdateAreaFractionsResource::new(&resources);
         let advect_velocity_resource = AdvectVelocityResource::new(&resources);

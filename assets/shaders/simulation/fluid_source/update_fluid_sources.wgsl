@@ -1,4 +1,5 @@
 #import fluid3d::fluid_uniform::FluidUniform
+#import fluid3d::constants::APRON_WIDTH
 
 const MODE_SOURCE = 0u;
 const MODE_SINK = 1u;
@@ -34,7 +35,7 @@ fn update_fluid_sources(
     @builtin(global_invocation_id) gid: vec3u,
 ) {
     let dim = textureDimensions(levelset_air0);
-    let local_position = 2.0 * (vec3f(gid) / vec3f(dim) - 0.5) * fluid_uniform.half_size;
+    let local_position = 2.0 * ((vec3f(gid) - vec3f(f32(APRON_WIDTH))) / vec3f(fluid_uniform.resolution) - 0.5) * fluid_uniform.half_size;
 
     var new_level = textureLoad(levelset_air0, gid).x;
     var new_velocity = vec3f(0.0);

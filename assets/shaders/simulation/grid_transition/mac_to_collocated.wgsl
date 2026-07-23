@@ -1,3 +1,5 @@
+#import fluid3d::constants::APRON_WIDTH
+
 @group(0) @binding(0) var u_mac: texture_storage_3d<r16float, read>;
 @group(0) @binding(1) var v_mac: texture_storage_3d<r16float, read>;
 @group(0) @binding(2) var w_mac: texture_storage_3d<r16float, read>;
@@ -12,7 +14,7 @@ const Z = vec3u(0, 0, 1);
 fn mac_to_collocated(
     @builtin(global_invocation_id) gid: vec3u,
 ) {
-    let dim = textureDimensions(u0);
+    let dim = textureDimensions(u0) - vec3u(2 * APRON_WIDTH);
     if any(gid >= dim) {
         return;
     }
@@ -22,5 +24,5 @@ fn mac_to_collocated(
         textureLoad(v_mac, gid).x + textureLoad(v_mac, gid + Y).x,
         textureLoad(w_mac, gid).x + textureLoad(w_mac, gid + Z).x,
     );
-    textureStore(u0, gid, vec4f(u, 0.0));
+    textureStore(u0, gid + vec3u(APRON_WIDTH), vec4f(u, 0.0));
 }

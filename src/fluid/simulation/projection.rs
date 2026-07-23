@@ -65,6 +65,7 @@ pub struct MultigridNumLevels(pub usize);
 
 #[derive(Component, ExtractComponent, Clone)]
 pub struct MultigridProjectionResources {
+    levelset_air_col: Handle<Image>,
     x: Vec<Handle<Image>>,
     b: Vec<Handle<Image>>,
     levelset: Vec<Handle<Image>>,
@@ -74,11 +75,13 @@ pub struct MultigridProjectionResources {
 
 #[derive(Resource)]
 pub struct MultigridProjectionPipeline {
+    initialize_pipeline: CachedComputePipelineId,
     gauss_seidel_red_pipeline: CachedComputePipelineId,
     gauss_seidel_black_pipeline: CachedComputePipelineId,
     residual_pipeline: CachedComputePipelineId,
     restriction_pipeline: CachedComputePipelineId,
     prolongation_pipeline: CachedComputePipelineId,
+    initialize_bind_group_layout: BindGroupLayoutDescriptor,
     gauss_seidel_bind_group_layout: BindGroupLayoutDescriptor,
     residual_bind_group_layout: BindGroupLayoutDescriptor,
     restriction_bind_group_layout: BindGroupLayoutDescriptor,
@@ -87,7 +90,8 @@ pub struct MultigridProjectionPipeline {
 
 impl MultigridProjectionPipeline {
     pub fn is_ready(&self, pipeline_cache: &PipelineCache) -> bool {
-        is_pipeline_loaded(pipeline_cache, self.gauss_seidel_red_pipeline)
+        is_pipeline_loaded(pipeline_cache, self.initialize_pipeline)
+            && is_pipeline_loaded(pipeline_cache, self.gauss_seidel_red_pipeline)
             && is_pipeline_loaded(pipeline_cache, self.gauss_seidel_black_pipeline)
             && is_pipeline_loaded(pipeline_cache, self.residual_pipeline)
             && is_pipeline_loaded(pipeline_cache, self.restriction_pipeline)
@@ -106,6 +110,9 @@ impl MultigridProjectionPipeline {
         workgroup_size: UVec3,
     ) {
         pass.push_debug_group("multigrid_projection");
+        let initialize_pipeline = pipeline_cache
+            .get_compute_pipeline(self.initialize_pipeline)
+            .unwrap();
         let gauss_seidel_red_pipeline = pipeline_cache
             .get_compute_pipeline(self.gauss_seidel_red_pipeline)
             .unwrap();
@@ -121,12 +128,15 @@ impl MultigridProjectionPipeline {
         let prolongation_pipeline = pipeline_cache
             .get_compute_pipeline(self.prolongation_pipeline)
             .unwrap();
-
+        let workgroups = num_workgroups(resolution, workgroup_size);
+        pass.set_pipeline(initialize_pipeline);
+        pass.set_bind_group(0, &bind_groups.initialize_bind_group, &[]);
         pass.set_bind_group(
             1,
             &uniform_bind_group.bind_group,
             &[uniform_bind_group.index],
         );
+        pass.dispatch_workgroups(workgroups.x, workgroups.y, workgroups.z);
 
         self.v_cycle(
             pass,
@@ -236,6 +246,16 @@ impl FromWorld for MultigridProjectionPipeline {
         let asset_server = world.resource::<AssetServer>();
 
         let uniform_bind_group_layout = world.resource::<FluidUniformBindGroupLayout>();
+        let initialize_bind_group_layout = BindGroupLayoutDescriptor::new(
+            "initialize_bind_group_layout",
+            &BindGroupLayoutEntries::sequential(
+                ShaderStages::COMPUTE,
+                (
+                    texture_storage_3d(TextureFormat::R32Float, StorageTextureAccess::ReadOnly),
+                    texture_storage_3d(TextureFormat::R32Float, StorageTextureAccess::WriteOnly),
+                ),
+            ),
+        );
         let gauss_seidel_bind_group_layout = BindGroupLayoutDescriptor::new(
             "gauss_seidel_bind_group_layout",
             &BindGroupLayoutEntries::sequential(
@@ -290,6 +310,14 @@ impl FromWorld for MultigridProjectionPipeline {
             ),
         );
 
+        let initialize_pipeline =
+            pipeline_cache.queue_compute_pipeline(ComputePipelineDescriptor {
+                label: Some("initialize_pipeline".into()),
+                layout: vec![initialize_bind_group_layout.clone()],
+                shader: asset_server.load("shaders/simulation/projection/initialize.wgsl"),
+                entry_point: Some("initialize".into()),
+                ..default()
+            });
         let gauss_seidel_red_pipeline =
             pipeline_cache.queue_compute_pipeline(ComputePipelineDescriptor {
                 label: Some("gauss_seidel_red_pipeline".into()),
@@ -346,11 +374,13 @@ impl FromWorld for MultigridProjectionPipeline {
             });
 
         Self {
+            initialize_pipeline,
             gauss_seidel_red_pipeline,
             gauss_seidel_black_pipeline,
             residual_pipeline,
             restriction_pipeline,
             prolongation_pipeline,
+            initialize_bind_group_layout,
             gauss_seidel_bind_group_layout,
             residual_bind_group_layout,
             restriction_bind_group_layout,
@@ -361,6 +391,7 @@ impl FromWorld for MultigridProjectionPipeline {
 
 #[derive(Component)]
 pub struct MultigridProjectionBindGroups {
+    initialize_bind_group: BindGroup,
     gauss_seidel_bind_groups: Vec<BindGroup>,
     residual_bind_groups: Vec<BindGroup>,
     restriction_bind_groups: Vec<BindGroup>,
@@ -384,9 +415,14 @@ pub fn setup_multigrid_resources(
     let mut non_solid_fraction = Vec::<Handle<Image>>::with_capacity(num_levels);
     let mut residual = Vec::<Handle<Image>>::with_capacity(num_levels);
 
+    let levelset_air_col = resources.levelset_air0.clone();
     x.push(resources.p.clone());
     b.push(resources.div.clone());
-    levelset.push(resources.levelset_air0.clone());
+    levelset.push(new_texture_storage_3d(
+        images,
+        resolution,
+        TextureFormat::R32Float,
+    ));
     non_solid_fraction.push(resources.non_solid_fraction.clone());
     residual.push(new_texture_storage_3d(
         images,
@@ -430,6 +466,7 @@ pub fn setup_multigrid_resources(
 
     commands.entity(entity).insert((
         MultigridProjectionResources {
+            levelset_air_col,
             x,
             b,
             levelset,
@@ -459,6 +496,18 @@ fn prepare_bind_groups(
         let mut residual_bind_groups = Vec::with_capacity(levels.0);
         let mut restriction_bind_groups = Vec::with_capacity(levels.0);
         let mut prolongation_bind_groups = Vec::with_capacity(levels.0);
+
+        let initialize_bind_group = render_device.create_bind_group(
+            "initialize_bind_group",
+            &pipeline_cache.get_bind_group_layout(&pipeline.initialize_bind_group_layout),
+            &BindGroupEntries::sequential((
+                &gpu_images
+                    .get(&resources.levelset_air_col)
+                    .unwrap()
+                    .texture_view,
+                &gpu_images.get(&resources.levelset[0]).unwrap().texture_view,
+            )),
+        );
         for i in 0..levels.0 {
             let mut dx_scale_buffer = UniformBuffer::from((1 << i) as f32);
             dx_scale_buffer.write_buffer(&render_device, &render_queue);
@@ -532,6 +581,7 @@ fn prepare_bind_groups(
         commands
             .entity(entity)
             .insert(MultigridProjectionBindGroups {
+                initialize_bind_group,
                 gauss_seidel_bind_groups,
                 residual_bind_groups,
                 restriction_bind_groups,

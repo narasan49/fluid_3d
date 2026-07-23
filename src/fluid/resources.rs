@@ -51,28 +51,32 @@ pub struct FluidResources {
 }
 
 impl FluidResources {
-    pub fn new(images: &mut Assets<Image>, resolution: UVec3) -> Self {
+    pub fn new(images: &mut Assets<Image>, resolution: UVec3, apron_width: u32) -> Self {
         let resolution_xyz = resolution + UVec3::ONE;
-        let levelset_air0 = new_texture_storage_3d(images, resolution, TextureFormat::R32Float);
-        let levelset_air1 = new_texture_storage_3d(images, resolution, TextureFormat::R32Float);
+        let resolution_apron = resolution + UVec3::splat(2 * apron_width);
+        let levelset_air0 =
+            new_texture_storage_3d(images, resolution_apron, TextureFormat::R32Float);
+        let levelset_air1 =
+            new_texture_storage_3d(images, resolution_apron, TextureFormat::R32Float);
         let levelset_and_grad_air =
             new_texture_storage_3d(images, resolution, TextureFormat::Rgba16Float);
-        let levelset_solid = new_texture_storage_3d(images, resolution, TextureFormat::R32Float);
+        let levelset_solid =
+            new_texture_storage_3d(images, resolution_apron, TextureFormat::R32Float);
 
-        let u0 = new_texture_storage_3d(images, resolution, TextureFormat::Rgba16Float);
-        let u1 = new_texture_storage_3d(images, resolution, TextureFormat::Rgba16Float);
+        let u0 = new_texture_storage_3d(images, resolution_apron, TextureFormat::Rgba16Float);
+        let u1 = new_texture_storage_3d(images, resolution_apron, TextureFormat::Rgba16Float);
         let u_mac = new_texture_storage_3d(images, resolution + UVec3::X, TextureFormat::R16Float);
         let v_mac = new_texture_storage_3d(images, resolution + UVec3::Y, TextureFormat::R16Float);
         let w_mac = new_texture_storage_3d(images, resolution + UVec3::Z, TextureFormat::R16Float);
-        let u_solid = new_texture_storage_3d(images, resolution, TextureFormat::Rgba16Float);
+        let u_solid = new_texture_storage_3d(images, resolution_apron, TextureFormat::Rgba16Float);
         let non_solid_fraction =
             new_texture_storage_3d(images, resolution_xyz, TextureFormat::Rgba16Float);
         let non_fluid_fraction =
             new_texture_storage_3d(images, resolution_xyz, TextureFormat::Rgba16Float);
         let div = new_texture_storage_3d(images, resolution, TextureFormat::R32Float);
         let p = new_texture_storage_3d(images, resolution, TextureFormat::R32Float);
-        let labels0 = new_texture_storage_3d(images, resolution, TextureFormat::R8Uint);
-        let labels1 = new_texture_storage_3d(images, resolution, TextureFormat::R8Uint);
+        let labels0 = new_texture_storage_3d(images, resolution_apron, TextureFormat::R8Uint);
+        let labels1 = new_texture_storage_3d(images, resolution_apron, TextureFormat::R8Uint);
         let velocity_fixed = [
             new_texture_storage_3d(images, resolution_xyz, TextureFormat::R8Uint),
             new_texture_storage_3d(images, resolution_xyz, TextureFormat::R8Uint),

@@ -1,4 +1,5 @@
 #import fluid3d::fluid_uniform::FluidUniform
+#import fluid3d::constants::APRON_WIDTH
 
 @group(0) @binding(0) var u_mac: texture_storage_3d<r16float, read_write>;
 @group(0) @binding(1) var v_mac: texture_storage_3d<r16float, read_write>;
@@ -28,10 +29,11 @@ fn solve_velocity(
     let factor = fluid_uniform.dt / (fluid_uniform.dx * fluid_uniform.rho);
 
     let f = textureLoad(non_solid_fraction, gid).xyz;
+    let idx_apron = gid + vec3u(APRON_WIDTH);
     if all(gid < (dim + X)) {
         if f.x == 0.0 {
-            let u_solid_plus = textureLoad(u_solid, gid).x;
-            let u_solid_minus = textureLoad(u_solid, gid - X).x;
+            let u_solid_plus = textureLoad(u_solid, idx_apron).x;
+            let u_solid_minus = textureLoad(u_solid, idx_apron - X).x;
             textureStore(u_mac, gid, vec4f(0.5 * (u_solid_plus + u_solid_minus), 0.0, 0.0, 0.0));
         } else {
             solve_u(gid, factor);
@@ -40,8 +42,8 @@ fn solve_velocity(
     
     if all(gid < (dim + Y)) {
         if f.y == 0.0 {
-            let u_solid_plus = textureLoad(u_solid, gid).y;
-            let u_solid_minus = textureLoad(u_solid, gid - Y).y;
+            let u_solid_plus = textureLoad(u_solid, idx_apron).y;
+            let u_solid_minus = textureLoad(u_solid, idx_apron - Y).y;
             textureStore(v_mac, gid, vec4f(0.5 * (u_solid_plus + u_solid_minus), 0.0, 0.0, 0.0));
         } else {
             solve_v(gid, factor);
@@ -50,8 +52,8 @@ fn solve_velocity(
 
     if all(gid < (dim + Z)) {
         if f.z == 0.0 {
-            let u_solid_plus = textureLoad(u_solid, gid).z;
-            let u_solid_minus = textureLoad(u_solid, gid - Z).z;
+            let u_solid_plus = textureLoad(u_solid, idx_apron).z;
+            let u_solid_minus = textureLoad(u_solid, idx_apron - Z).z;
             textureStore(w_mac, gid, vec4f(0.5 * (u_solid_plus + u_solid_minus), 0.0, 0.0, 0.0));
         } else {
             solve_w(gid, factor);
@@ -63,8 +65,8 @@ fn solve_u(
     idx: vec3u,
     velocity_scale: f32,
 ) {
-    let level_plus = textureLoad(levelset_air0, idx).x;
-    let level_minus = textureLoad(levelset_air0, idx - X).x;
+    let level_plus = textureLoad(levelset_air0, idx + vec3u(APRON_WIDTH)).x;
+    let level_minus = textureLoad(levelset_air0, idx + vec3u(APRON_WIDTH) - X).x;
     let f = textureLoad(non_fluid_fraction, idx).x;
     if f == 1.0 {
         // MACグリッド上のu_mac[idx]の位置(i - 0.5, j, k)が空気なら速度は0
@@ -81,8 +83,8 @@ fn solve_v(
     idx: vec3u,
     velocity_scale: f32,
 ) {
-    let level_plus = textureLoad(levelset_air0, idx).x;
-    let level_minus = textureLoad(levelset_air0, idx - Y).x;
+    let level_plus = textureLoad(levelset_air0, idx + vec3u(APRON_WIDTH)).x;
+    let level_minus = textureLoad(levelset_air0, idx + vec3u(APRON_WIDTH) - Y).x;
     let f = textureLoad(non_fluid_fraction, idx).y;
     if f == 1.0 {
         // MACグリッド上のv_mac[idx]の位置(i, j - 0.5, k)が空気なら速度は0
@@ -99,8 +101,8 @@ fn solve_w(
     idx: vec3u,
     velocity_scale: f32,
 ) {
-    let level_plus = textureLoad(levelset_air0, idx).x;
-    let level_minus = textureLoad(levelset_air0, idx - Z).x;
+    let level_plus = textureLoad(levelset_air0, idx + vec3u(APRON_WIDTH)).x;
+    let level_minus = textureLoad(levelset_air0, idx + vec3u(APRON_WIDTH) - Z).x;
     let level_edge = 0.5 * (level_plus + level_minus);
     let f = textureLoad(non_fluid_fraction, idx).z;
     if f == 1.0 {

@@ -1,4 +1,5 @@
 #import fluid3d::fluid_uniform::FluidUniform
+#import fluid3d::constants::APRON_WIDTH
 
 @group(0) @binding(0) var u_mac: texture_storage_3d<r16float, read>;
 @group(0) @binding(1) var v_mac: texture_storage_3d<r16float, read>;
@@ -33,7 +34,8 @@ fn divergence(
         textureLoad(w_mac, gid + Z).x,
     );
 
-    let u_solid_center = textureLoad(u_solid, gid).xyz;
+    let idx_apron = gid + vec3u(APRON_WIDTH);
+    let u_solid_center = textureLoad(u_solid, idx_apron).xyz;
     
     let f_minus = textureLoad(non_solid_fraction, gid).xyz;
     let f_plus = vec3f(
