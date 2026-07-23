@@ -20,7 +20,7 @@ fn mac_to_collocated(
     let u = 0.5 * vec3f(
         textureLoad(u_mac, gid).x + textureLoad(u_mac, gid + X).x,
         textureLoad(v_mac, gid).x + textureLoad(v_mac, gid + Y).x,
-        textureLoad(w_mac, gid).x + textureLoad(w_mac, gid + Y).x,
+        textureLoad(w_mac, gid).x + textureLoad(w_mac, gid + Z).x,
     );
     textureStore(u0, gid, vec4f(u, 0.0));
 }
