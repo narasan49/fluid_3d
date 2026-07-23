@@ -7,7 +7,7 @@
 
 @group(1) @binding(0) var<uniform> fluid_uniform: FluidUniform;
 
-const CFL_SCALE: f32 = 5.0;
+const CFL_SCALE: f32 = 1.0;
 
 @compute @workgroup_size(8, 8, 4)
 fn apply_forces(
