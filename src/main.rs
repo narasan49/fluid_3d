@@ -100,7 +100,7 @@ fn setup_scene(
     grid_length: Res<GridLength>,
 ) {
     let player_capsule = Capsule3d::new(0.05, 0.1);
-    let moving_cube = Cuboid::from_size(Vec3::new(0.1, 0.2, 0.8));
+    let moving_cube = Cuboid::from_size(Vec3::new(0.1, 0.2, 0.6));
     commands.spawn((
         game::scene::SceneRoot,
         children![

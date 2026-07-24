@@ -8,10 +8,13 @@ fn initialize(
     @builtin(global_invocation_id) gid: vec3u,
 ) {
     let dim = textureDimensions(levelset_air0);
+    let level = 100.0;
     if all(gid < dim) {
-        let level = 100.0;
         textureStore(levelset_air0, gid, vec4f(level, vec3f(0)));
         textureStore(levelset_air1, gid, vec4f(level, vec3f(0)));
+    }
+    
+    if all(gid < textureDimensions(levelset_and_grad_air)) {
         textureStore(levelset_and_grad_air, gid, vec4f(level, 0.0, 1.0, 0.0));
     }
 

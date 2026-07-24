@@ -311,7 +311,7 @@ pub fn reinitialize_levelset_dispatch(
     pass.push_debug_group("reinitialize_levelset_update");
     pass.set_pipeline(update_pipeline);
     pass.set_bind_group(0, &bind_groups.update_bind_group.bind_group, &[]);
-    for _ in 0..10 {
+    for _ in 0..5 {
         pass.dispatch_workgroups(workgroups.x, workgroups.y, workgroups.z);
     }
     pass.pop_debug_group();

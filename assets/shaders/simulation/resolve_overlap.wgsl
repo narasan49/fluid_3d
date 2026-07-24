@@ -1,5 +1,6 @@
 #import fluid3d::fluid_uniform::FluidUniform
 #import fluid3d::interp::{trilinear_rw, trilinear_rgba16float}
+#import fluid3d::constants::APRON_WIDTH
 
 struct OtherFluidUniform {
     inverse_transform: mat4x4f,
@@ -21,7 +22,7 @@ fn resolve_overlap(
     @builtin(global_invocation_id) gid: vec3u,
 ) {
     let dim = textureDimensions(levelset_air_this);
-    let local_position = 2.0 * (vec3f(gid) / vec3f(dim) - 0.5) * fluid_uniform_this.half_size;
+    let local_position = 2.0 * ((vec3f(gid) - vec3f(f32(APRON_WIDTH))) / vec3f(fluid_uniform_this.resolution) - 0.5) * fluid_uniform_this.half_size;
     let global_position: vec4f = fluid_uniform_this.transform * vec4f(local_position, 1.0);
 
     let local_position_other = fluid_uniform_other.inverse_transform * global_position;

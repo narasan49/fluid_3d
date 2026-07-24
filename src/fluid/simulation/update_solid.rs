@@ -21,49 +21,52 @@ use crate::fluid::{
     workgroup::num_workgroups,
 };
 
-pub struct UpdateSolidPass;
+pub struct UpdateSolidAndApronPass;
 
-impl FluidComputePass for UpdateSolidPass {
-    type B = UpdateSolidBindGroup;
-    type P = UpdateSolidPipeline;
-    type R = UpdateSolidResource;
+impl FluidComputePass for UpdateSolidAndApronPass {
+    type B = UpdateSolidAndApronBindGroup;
+    type P = UpdateSolidAndApronPipeline;
+    type R = UpdateSolidAndApronResource;
 }
 
 #[derive(Component, ExtractComponent, Clone, AsBindGroup)]
-pub struct UpdateSolidResource {
+pub struct UpdateSolidAndApronResource {
     #[storage_texture(0, image_format = Rgba16Float, dimension = "3d", access = ReadWrite)]
     pub u_solid: Handle<Image>,
     #[storage_texture(1, image_format = R32Float, dimension = "3d", access = WriteOnly)]
     pub levelset_solid: Handle<Image>,
+    #[storage_texture(2, image_format = R32Float, dimension = "3d", access = WriteOnly)]
+    pub levelset_air0: Handle<Image>,
 }
 
-impl UpdateSolidResource {
+impl UpdateSolidAndApronResource {
     pub fn new(resources: &FluidResources) -> Self {
         Self {
             u_solid: resources.u_solid.clone(),
             levelset_solid: resources.levelset_solid.clone(),
+            levelset_air0: resources.levelset_air0.clone(),
         }
     }
 }
 
 #[derive(Resource)]
-pub struct UpdateSolidPipeline {
+pub struct UpdateSolidAndApronPipeline {
     pipeline: CachedComputePipelineId,
     bind_group_layout: BindGroupLayoutDescriptor,
 }
 
-impl UpdateSolidPipeline {
+impl UpdateSolidAndApronPipeline {
     pub fn dispatch(
         &self,
         pipeline_cache: &PipelineCache,
         pass: &mut ComputePass,
-        bind_group: &UpdateSolidBindGroup,
+        bind_group: &UpdateSolidAndApronBindGroup,
         uniform_bind_group: &FluidUniformBindGroup,
         solid_body_bind_group: &SolidBodyBufferBindGroup,
         resolution: UVec3,
         workgroup_size: UVec3,
     ) {
-        pass.push_debug_group("update_solid");
+        pass.push_debug_group("update_solid_and_apron");
         let pipeline = pipeline_cache.get_compute_pipeline(self.pipeline).unwrap();
         let num_wg = num_workgroups(resolution, workgroup_size);
         pass.set_pipeline(pipeline);
@@ -80,7 +83,7 @@ impl UpdateSolidPipeline {
     }
 }
 
-impl FluidPipeline for UpdateSolidPipeline {
+impl FluidPipeline for UpdateSolidAndApronPipeline {
     fn bind_group_layoput(&self) -> &BindGroupLayoutDescriptor {
         &self.bind_group_layout
     }
@@ -90,25 +93,26 @@ impl FluidPipeline for UpdateSolidPipeline {
     }
 }
 
-impl FromWorld for UpdateSolidPipeline {
+impl FromWorld for UpdateSolidAndApronPipeline {
     fn from_world(world: &mut World) -> Self {
         let render_device = world.resource::<RenderDevice>();
         let pipeline_cache = world.resource::<PipelineCache>();
         let asset_server = world.resource::<AssetServer>();
 
-        let bind_group_layout = UpdateSolidResource::bind_group_layout_descriptor(render_device);
+        let bind_group_layout =
+            UpdateSolidAndApronResource::bind_group_layout_descriptor(render_device);
         let uniform_bind_group_layout = world.resource::<FluidUniformBindGroupLayout>();
         let solid_body_bind_group_layout = world.resource::<SolidBodyBufferBindGroupLayout>();
 
         let pipeline = pipeline_cache.queue_compute_pipeline(ComputePipelineDescriptor {
-            label: Some("update_solid_pipeline".into()),
+            label: Some("update_solid_and_apron_pipeline".into()),
             layout: vec![
                 bind_group_layout.clone(),
                 uniform_bind_group_layout.0.clone(),
                 solid_body_bind_group_layout.0.clone(),
             ],
-            shader: asset_server.load("shaders/simulation/update_solid.wgsl"),
-            entry_point: Some("update_solid".into()),
+            shader: asset_server.load("shaders/simulation/update_solid_and_apron.wgsl"),
+            entry_point: Some("update_solid_and_apron".into()),
             ..default()
         });
 
@@ -120,11 +124,11 @@ impl FromWorld for UpdateSolidPipeline {
 }
 
 #[derive(Component)]
-pub struct UpdateSolidBindGroup {
+pub struct UpdateSolidAndApronBindGroup {
     bind_group: BindGroup,
 }
 
-impl From<BindGroup> for UpdateSolidBindGroup {
+impl From<BindGroup> for UpdateSolidAndApronBindGroup {
     fn from(bind_group: BindGroup) -> Self {
         Self { bind_group }
     }

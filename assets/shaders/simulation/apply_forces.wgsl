@@ -1,5 +1,6 @@
 #import fluid3d::fluid_uniform::FluidUniform
 #import fluid3d::area_fraction::{load_area_fraction, fully_solid}
+#import fluid3d::constants::APRON_WIDTH
 
 @group(0) @binding(0) var u1: texture_storage_3d<rgba16float, read_write>;
 @group(0) @binding(1) var levelset_air0: texture_storage_3d<r32float, read>;
@@ -7,7 +8,7 @@
 
 @group(1) @binding(0) var<uniform> fluid_uniform: FluidUniform;
 
-const CFL_SCALE: f32 = 5.0;
+const CFL_SCALE: f32 = 1.0;
 
 @compute @workgroup_size(8, 8, 4)
 fn apply_forces(
@@ -24,7 +25,8 @@ fn apply_forces(
         return;
     }
 
-    let f = load_area_fraction(non_solid_fraction, vec3i(gid));
+    // ToDo: apron領域の外側Edgeではarea_fractionが未定義。
+    let f = load_area_fraction(non_solid_fraction, vec3i(gid) - vec3i(i32(APRON_WIDTH)));
     if fully_solid(f) {
         textureStore(u1, gid, vec4f(0.0));
         return;
