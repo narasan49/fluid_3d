@@ -19,13 +19,14 @@ impl Plugin for CharacterControllerPlugin {
             )
                 .chain(),
         )
-        .add_systems(Update, update_player_camera);
+        .add_systems(Update, (update_player_camera, respawn));
     }
 }
 
 const CHARACTER_ACCELERATION: f32 = 20.0;
 const DAMPING_RATE: f32 = 0.8;
 const JUMP_SPEED: f32 = 2.0;
+const LOWER_BOUNDARY: f32 = -3.0;
 
 #[derive(Component)]
 pub struct Player;
@@ -150,5 +151,13 @@ fn update_player_camera(
 
     for mut transform in &mut query {
         transform.rotate_local_y(-delta.x * time.delta_secs() * 0.1);
+    }
+}
+
+fn respawn(mut query: Query<&mut Transform, With<Player>>) {
+    for mut transform in &mut query {
+        if transform.translation.y < LOWER_BOUNDARY {
+            transform.translation = Vec3::new(1.0, 5.0, 0.0);
+        }
     }
 }
