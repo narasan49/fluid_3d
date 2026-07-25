@@ -14,9 +14,9 @@ fn update_grad_levelset(
     }
     
     let idx_apron = gid + vec3u(APRON_WIDTH);
-    let level_air = textureLoad(levelset_air0, idx_apron).r;
+    let level_air = textureLoad(levelset_air0, idx_apron).x;
 
-    var grad = vec3f(0.0);
+    var grad = vec3f(0.0, 1.0, 0.0);
 
     if all(gid > vec3u(0)) && all(gid < (dim - vec3u(1))) {
         grad = vec3f(
