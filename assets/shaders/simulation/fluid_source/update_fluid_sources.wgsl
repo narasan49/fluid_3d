@@ -57,7 +57,7 @@ fn update_fluid_sources(
             case MODE_SINK:
             {
                 if !has_source {
-                    new_level = min(new_level, -source_level);
+                    new_level = max(new_level, -source_level);
                 }
             }
             default:
