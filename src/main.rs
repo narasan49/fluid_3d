@@ -24,7 +24,7 @@ use crate::{
     game::{
         character_controller::CharacterController,
         input_mode::InputMode,
-        scene::{ActiveScene, demo::spawn_demo_scene, single_fluid::spawn_simple_scene},
+        scene::{ActiveScene, SceneRoot, demo::spawn_demo_scene, single_fluid::spawn_simple_scene},
         solid_body_motion::update_moving_object,
     },
     marching_cubes::{MarchingCubes, MarchingCubesPlugin},
@@ -52,7 +52,7 @@ fn main() {
             FluidBoundsPlugin,
             game::GamePlugin,
         ))
-        .add_systems(Startup, setup_dev_tools)
+        .add_systems(Startup, setup_persistent_components)
         .add_systems(Startup, setup_scene)
         .add_systems(Update, setup_fluid_render)
         .add_systems(
@@ -61,6 +61,7 @@ fn main() {
                 update_moving_object,
                 toggle_fluid_source,
                 toggle_free_camera,
+                setup_free_camera,
             ),
         )
         .insert_resource(Gravity(9.8 * Vec3::NEG_Y))
@@ -70,20 +71,7 @@ fn main() {
         .run();
 }
 
-fn setup_dev_tools(mut commands: Commands) {
-    let mut free_camera_state = FreeCameraState::default();
-    free_camera_state.enabled = false;
-    commands.spawn((
-        Camera3d::default(),
-        Camera {
-            is_active: false,
-            ..default()
-        },
-        Transform::from_xyz(0.0, 0.5, 2.0).looking_at(Vec3::ZERO, Vec3::Y),
-        FreeCamera::default(),
-        free_camera_state,
-    ));
-
+fn setup_persistent_components(mut commands: Commands) {
     commands.spawn((InfiniteGrid, InfiniteGridSettings::default()));
 }
 
@@ -99,6 +87,23 @@ fn setup_scene(
             spawn_demo_scene(&mut commands, &mut meshes, &mut materials, &grid_length)
         }
         ActiveScene::SingleFluid => spawn_simple_scene(&mut commands),
+    }
+}
+
+fn setup_free_camera(mut commands: Commands, query: Query<Entity, Added<SceneRoot>>) {
+    for entity in &query {
+        let mut free_camera_state = FreeCameraState::default();
+        free_camera_state.enabled = false;
+        commands.entity(entity).with_child((
+            Camera3d::default(),
+            Camera {
+                is_active: false,
+                ..default()
+            },
+            Transform::from_xyz(1.0, 0.5, 0.0).looking_at(Vec3::ZERO, Vec3::Y),
+            FreeCamera::default(),
+            free_camera_state,
+        ));
     }
 }
 
