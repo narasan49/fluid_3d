@@ -4,14 +4,7 @@ mod game;
 mod marching_cubes;
 pub mod rigid_body;
 
-use avian3d::{
-    PhysicsPlugins,
-    collision::collider::IntoCollider,
-    dynamics::{
-        integrator::Gravity,
-        rigid_body::{LockedAxes, RigidBody},
-    },
-};
+use avian3d::{PhysicsPlugins, dynamics::integrator::Gravity};
 use bevy::{
     camera_controller::free_camera::{FreeCamera, FreeCameraPlugin, FreeCameraState},
     dev_tools::infinite_grid::{InfiniteGrid, InfiniteGridPlugin, InfiniteGridSettings},
@@ -25,14 +18,14 @@ use bevy::{
 use crate::{
     diagnostics::fluid_bounds::FluidBoundsPlugin,
     fluid::{
-        Fluid3d, Fluid3dPlugin, GridLength,
-        resources::FluidResources,
-        simulation::{fluid_source::FluidSource, solid_to_fluid::SolidShapeOnFluid},
+        Fluid3d, Fluid3dPlugin, GridLength, resources::FluidResources,
+        simulation::fluid_source::FluidSource,
     },
     game::{
-        character_controller::{CharacterController, Player},
+        character_controller::CharacterController,
         input_mode::InputMode,
-        solid_body_motion::{MovingObject, update_moving_object},
+        scene::{ActiveScene, demo::spawn_demo_scene, single_fluid::spawn_simple_scene},
+        solid_body_motion::update_moving_object,
     },
     marching_cubes::{MarchingCubes, MarchingCubesPlugin},
 };
@@ -73,6 +66,7 @@ fn main() {
         .insert_resource(Gravity(9.8 * Vec3::NEG_Y))
         .insert_resource(GridLength(1.0 / LENGTH_UNIT))
         .insert_resource(InputMode::Game)
+        .insert_resource(ActiveScene::Demo)
         .run();
 }
 
@@ -98,57 +92,14 @@ fn setup_scene(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     grid_length: Res<GridLength>,
+    active_scene: Res<ActiveScene>,
 ) {
-    let player_capsule = Capsule3d::new(0.05, 0.1);
-    let moving_cube = Cuboid::from_size(Vec3::new(0.1, 0.2, 0.6));
-    commands.spawn((
-        game::scene::SceneRoot,
-        children![
-            game::scene::static_objects(&mut meshes, &mut materials),
-            game::scene::fluids(grid_length.0, &mut meshes, &mut materials),
-            (
-                Name::new("Light"),
-                PointLight::default(),
-                Transform::from_xyz(0.0, 15.0, 0.0),
-            ),
-            (
-                Name::new("PlayerCapsule"),
-                Player,
-                Transform::default()
-                    .with_rotation(Quat::from_rotation_y(std::f32::consts::FRAC_PI_2))
-                    .with_translation(Vec3::new(1.0, 0.5, 0.0,)),
-                Mesh3d(meshes.add(player_capsule)),
-                MeshMaterial3d(materials.add(Color::srgb(0.8, 0.8, 0.0))),
-                player_capsule.collider(),
-                SolidShapeOnFluid::Capsule(player_capsule),
-                CharacterController::default(),
-                RigidBody::Dynamic,
-                LockedAxes::ROTATION_LOCKED,
-                children![(
-                    Camera3d::default(),
-                    Camera {
-                        order: 1,
-                        ..default()
-                    },
-                    Transform::from_xyz(0.0, 0.4, 1.0).looking_at(Vec3::ZERO, Vec3::Y),
-                )]
-            ),
-            (
-                Name::new("MovingCube"),
-                Transform::default().with_translation(Vec3::new(
-                    -0.85,
-                    moving_cube.half_size.y,
-                    0.0
-                )),
-                Mesh3d(meshes.add(moving_cube)),
-                MeshMaterial3d(materials.add(Color::srgb(0.8, 0.8, 0.8))),
-                moving_cube.collider(),
-                SolidShapeOnFluid::Cuboid(moving_cube),
-                RigidBody::Kinematic,
-                MovingObject,
-            )
-        ],
-    ));
+    match *active_scene {
+        ActiveScene::Demo => {
+            spawn_demo_scene(&mut commands, &mut meshes, &mut materials, &grid_length)
+        }
+        ActiveScene::SingleFluid => spawn_simple_scene(&mut commands),
+    }
 }
 
 // レベルセットテクスチャをMarchingCubesに渡して描画する

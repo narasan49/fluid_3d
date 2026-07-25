@@ -1,6 +1,9 @@
 use bevy::prelude::*;
 
-use crate::game::{input_mode::InputMode, scene::SceneRoot};
+use crate::game::{
+    input_mode::InputMode,
+    scene::{ActiveScene, SceneRoot},
+};
 
 pub struct GameUiPlugin;
 
@@ -19,6 +22,8 @@ enum MenuAction {
     Resume,
     Restart,
     Quit,
+    SimpleScene,
+    DemoScene,
 }
 
 #[derive(Component)]
@@ -47,6 +52,9 @@ fn spwan_root(mut commands: Commands) {
                     (MenuAction::Resume, button("Resume")),
                     (MenuAction::Restart, button("Restart")),
                     (MenuAction::Quit, button("Quit")),
+                    (Text::new("Select Scene")),
+                    (MenuAction::DemoScene, button("Demo")),
+                    (MenuAction::SimpleScene, button("SimpleFluid")),
                 ],
             ),
             (
@@ -69,6 +77,7 @@ fn menu_action(
     mut q_menu: Query<&mut Visibility, With<Menu>>,
     q_scene: Query<Entity, With<SceneRoot>>,
     mut input_mode: ResMut<InputMode>,
+    mut active_scene: ResMut<ActiveScene>,
 ) {
     for (interaction, menu_action) in &interaction_query {
         if *interaction == Interaction::Pressed {
@@ -91,6 +100,28 @@ fn menu_action(
                         *visibility = Visibility::Hidden;
                     }
                     *input_mode = InputMode::Game;
+                }
+                MenuAction::SimpleScene => {
+                    for entity in &q_scene {
+                        commands.entity(entity).despawn();
+                        commands.run_system_cached(crate::setup_scene);
+                    }
+                    for mut visibility in &mut q_menu {
+                        *visibility = Visibility::Hidden;
+                    }
+                    *input_mode = InputMode::Game;
+                    *active_scene = ActiveScene::SingleFluid;
+                }
+                MenuAction::DemoScene => {
+                    for entity in &q_scene {
+                        commands.entity(entity).despawn();
+                        commands.run_system_cached(crate::setup_scene);
+                    }
+                    for mut visibility in &mut q_menu {
+                        *visibility = Visibility::Hidden;
+                    }
+                    *input_mode = InputMode::Game;
+                    *active_scene = ActiveScene::Demo;
                 }
             }
         }
