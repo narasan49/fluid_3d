@@ -143,7 +143,7 @@ pub fn fluids(
     let source_fluid_resolution = UVec3::new(16, 32, 32);
     let source_fluid_half_size = 0.5 * resolution.as_vec3() * grid_length;
 
-    let cylinder = Cylinder::new(0.1, 0.4);
+    let cylinder = Cylinder::new(0.1, 0.2);
     (
         Name::new("FluidsRoot"),
         Transform::default(),
@@ -180,7 +180,7 @@ pub fn fluids(
                 Transform::from_translation(Vec3::new(
                     -0.75,
                     2.0 * fluid_half_size.y + source_fluid_half_size.y,
-                    -1.2 * fluid_half_size.z,
+                    -1.0 * fluid_half_size.z,
                 )),
                 Visibility::Inherited,
                 children![
@@ -206,7 +206,7 @@ pub fn fluids(
                         cylinder.collider(),
                         Transform::default()
                             .with_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2))
-                            .with_translation(Vec3::new(0.0, 0.0, -0.05)),
+                            .with_translation(Vec3::new(0.0, 0.0, -0.2)),
                     )
                 ]
             )
