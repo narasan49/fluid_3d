@@ -47,20 +47,20 @@ fn build_vertex_buffer(
     @builtin(global_invocation_id) gid: vec3u,
 ) {
     let dim = textureDimensions(grad_sdf);
-    if any(gid == vec3u(0)) || any(gid >= (dim - vec3u(2))) {
+    if any(gid >= (dim - vec3u(1))) {
         return;
     }
     let dimf = vec3f(dim);
     let x = vec3f(gid) / dimf - vec3f(0.5);
     let offsets = array<vec3f, 8>(
-        vec3f(offsets_unit[0]) / dimf,
-        vec3f(offsets_unit[1]) / dimf,
-        vec3f(offsets_unit[2]) / dimf,
-        vec3f(offsets_unit[3]) / dimf,
-        vec3f(offsets_unit[4]) / dimf,
-        vec3f(offsets_unit[5]) / dimf,
-        vec3f(offsets_unit[6]) / dimf,
-        vec3f(offsets_unit[7]) / dimf,
+        (vec3f(offsets_unit[0]) + vec3f(0.5))/ dimf,
+        (vec3f(offsets_unit[1]) + vec3f(0.5))/ dimf,
+        (vec3f(offsets_unit[2]) + vec3f(0.5))/ dimf,
+        (vec3f(offsets_unit[3]) + vec3f(0.5))/ dimf,
+        (vec3f(offsets_unit[4]) + vec3f(0.5))/ dimf,
+        (vec3f(offsets_unit[5]) + vec3f(0.5))/ dimf,
+        (vec3f(offsets_unit[6]) + vec3f(0.5))/ dimf,
+        (vec3f(offsets_unit[7]) + vec3f(0.5))/ dimf,
     );
 
     let level_and_normals = array<vec4f, 8>(
