@@ -85,7 +85,9 @@ fn update_solid_and_apron(
         }
         if sdf0 < 0.5 {
             // m/s -> pixel/s
-            velocity = solid_bodies[i].linear_velocity / fluid_uniform.dx;
+            let r = global_position - solid_bodies[i].transform[3].xyz;
+            let omega = solid_bodies[i].angular_velocity;
+            velocity = (solid_bodies[i].linear_velocity + cross(omega, r)) / fluid_uniform.dx;
         }
     }
 

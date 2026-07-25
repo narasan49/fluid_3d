@@ -1,4 +1,4 @@
-use avian3d::dynamics::rigid_body::LinearVelocity;
+use avian3d::dynamics::rigid_body::{AngularVelocity, LinearVelocity};
 use bevy::{
     material::descriptor::BindGroupLayoutDescriptor,
     prelude::*,
@@ -76,6 +76,7 @@ pub enum SolidShapeOnFluid {
 pub struct SolidBody {
     pub shape: ShapeVariant,
     pub linear_velocity: Vec3,
+    pub angular_velocity: Vec3,
     pub transform: Mat4,
     pub inv_transform: Mat4,
 }
@@ -142,18 +143,24 @@ fn init_buffer(mut commands: Commands, mut buffers: ResMut<Assets<ShaderBuffer>>
 }
 
 fn update_solid_body_buffer(
-    query: Query<(&GlobalTransform, &SolidShapeOnFluid, &LinearVelocity)>,
+    query: Query<(
+        &GlobalTransform,
+        &SolidShapeOnFluid,
+        &LinearVelocity,
+        &AngularVelocity,
+    )>,
     mut solid_body_buffer: ResMut<SolidBodyBuffer>,
     mut buffers: ResMut<Assets<ShaderBuffer>>,
 ) {
     let solid_bodies = query
         .iter()
-        .map(|(transform, shape, velocity)| {
+        .map(|(transform, shape, velocity, angular_velocity)| {
             let transform = transform.to_matrix();
             let inv_transform = transform.inverse();
             SolidBody {
                 shape: shape.into(),
                 linear_velocity: velocity.0,
+                angular_velocity: angular_velocity.0,
                 transform: transform,
                 inv_transform,
             }

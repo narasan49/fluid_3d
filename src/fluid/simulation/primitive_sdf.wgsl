@@ -10,13 +10,14 @@ struct SolidBody {
     shape: u32,
     values: array<f32, 8>,
     linear_velocity: vec3f,
+    angular_velocity: vec3f,
     transform: mat4x4f,
     inverse_transform: mat4x4f,
 }
 
 struct Capsule {
-    half_length: f32,
     radius: f32,
+    half_length: f32,
 }
 
 struct Cube {
