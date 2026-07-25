@@ -106,7 +106,7 @@ fn build_vertex_buffer(
 
             let phi0 = cube_levels[edge.a];
             let phi1 = cube_levels[edge.b];
-            let t = phi0 / (phi0 - phi1);
+            let t = clamp(phi0 / (phi0 - phi1), 0.001, 1.0);
             let vertex_offset = mix(offsets[edge.a], offsets[edge.b], t);
             let position = vec4f(x + vertex_offset, 1.0);
             let normal = mix(cube_normanls[edge.a], cube_normanls[edge.b], t);
