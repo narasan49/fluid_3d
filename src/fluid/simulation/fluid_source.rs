@@ -12,7 +12,9 @@ use bevy::{
 
 use fluid_sources_uniform::FluidSourcesBindGroupLayout;
 
-use crate::fluid::simulation::fluid_source::fluid_sources_uniform::FluidSourcesUniform;
+use crate::fluid::simulation::fluid_source::fluid_sources_uniform::{
+    FluidSourcesOnResetUniform, FluidSourcesUniform,
+};
 
 const MAX_FLUID_SOURCE: usize = 8;
 
@@ -24,6 +26,8 @@ impl Plugin for FluidSourcePlugin {
             ExtractComponentPlugin::<FluidSource>::default(),
             ExtractComponentPlugin::<FluidSourcesUniform>::default(),
             UniformComponentPlugin::<FluidSourcesUniform>::default(),
+            ExtractComponentPlugin::<FluidSourcesOnResetUniform>::default(),
+            UniformComponentPlugin::<FluidSourcesOnResetUniform>::default(),
         ))
         .add_systems(Update, fluid_sources_uniform::update_fluid_sources_buffer);
 
@@ -42,7 +46,7 @@ impl Plugin for FluidSourcePlugin {
 }
 
 #[derive(Component, ExtractComponent, Clone)]
-#[require(Transform, FluidSourceShape, FluidSourceVelocity)]
+#[require(Transform, FluidSourceShape, FluidSourceVelocity, FluidSourceTiming)]
 pub struct FluidSource {
     pub active: bool,
     pub mode: FluidSourceMode,
@@ -96,3 +100,10 @@ impl Default for FluidSourceShape {
 
 #[derive(Component, Default)]
 pub struct FluidSourceVelocity(pub Vec3);
+
+#[derive(Component, Default)]
+pub enum FluidSourceTiming {
+    OnReset,
+    #[default]
+    NotOnReset,
+}

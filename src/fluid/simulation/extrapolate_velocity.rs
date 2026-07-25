@@ -106,21 +106,22 @@ impl ExtrapolateVelocityPipeline {
         pass.dispatch_workgroups(workgroups.x, workgroups.y, workgroups.z);
 
         pass.set_pipeline(update_pipeline);
-        for _ in 0..3 {
+        let n_iter = 1;
+        for _ in 0..n_iter {
             pass.set_bind_group(0, &bind_groups.update_u_bind_groups[0], &[]);
             pass.dispatch_workgroups(workgroups_x.x, workgroups_x.y, workgroups_x.z);
 
             pass.set_bind_group(0, &bind_groups.update_u_bind_groups[1], &[]);
             pass.dispatch_workgroups(workgroups_x.x, workgroups_x.y, workgroups_x.z);
         }
-        for _ in 0..3 {
+        for _ in 0..n_iter {
             pass.set_bind_group(0, &bind_groups.update_v_bind_groups[0], &[]);
             pass.dispatch_workgroups(workgroups_y.x, workgroups_y.y, workgroups_y.z);
 
             pass.set_bind_group(0, &bind_groups.update_v_bind_groups[1], &[]);
             pass.dispatch_workgroups(workgroups_y.x, workgroups_y.y, workgroups_y.z);
         }
-        for _ in 0..3 {
+        for _ in 0..n_iter {
             pass.set_bind_group(0, &bind_groups.update_w_bind_groups[0], &[]);
             pass.dispatch_workgroups(workgroups_z.x, workgroups_z.y, workgroups_z.z);
 

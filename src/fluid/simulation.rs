@@ -42,7 +42,9 @@ use crate::fluid::{
         },
         fluid_source::{
             FluidSourcePlugin,
-            fluid_sources_uniform::FluidSourcesUniformBindGroup,
+            fluid_sources_uniform::{
+                FluidSourcesOnResetUniformBindGroup, FluidSourcesUniformBindGroup,
+            },
             update_fluid_sources::{
                 UpdateFluidSourcesBindGroup, UpdateFluidSourcesPass, UpdateFluidSourcesPipeline,
             },
@@ -139,6 +141,7 @@ enum SimulationState {
 struct SimulationBindGroups {
     fluid_uniform_bind_group: &'static FluidUniformBindGroup,
     fluid_sources_uniform_bind_group: &'static FluidSourcesUniformBindGroup,
+    fluid_sources_on_reset_uniform_bind_group: &'static FluidSourcesOnResetUniformBindGroup,
     resolve_overlap_bind_groups: &'static ResolveOverlapBindGroups,
     init_bind_group: &'static InitializeBindGroup,
     update_solid_bind_group: &'static UpdateSolidAndApronBindGroup,
@@ -280,6 +283,16 @@ fn run_simulation(
                             &pipeline_cache,
                             &mut pass,
                             bind_groups.init_bind_group,
+                            fluid.resolution_with_apron(),
+                            WORKGROUP_SIZE,
+                        );
+
+                        pipelines.update_fluid_sources_pipeline.dispatch_on_reset(
+                            &mut pass,
+                            &pipeline_cache,
+                            &bind_groups.update_fluid_sources_bind_group,
+                            &bind_groups.fluid_uniform_bind_group,
+                            &bind_groups.fluid_sources_on_reset_uniform_bind_group,
                             fluid.resolution_with_apron(),
                             WORKGROUP_SIZE,
                         );

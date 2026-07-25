@@ -17,7 +17,7 @@ use crate::fluid::{
         divergence::DivergenceResource,
         extrapolate_velocity::ExtrapolateVelocityResource,
         fluid_source::{
-            fluid_sources_uniform::FluidSourcesUniform,
+            fluid_sources_uniform::{FluidSourcesOnResetUniform, FluidSourcesUniform},
             update_fluid_sources::UpdateFluidSourcesResource,
         },
         fluid_uniform::FluidUniform,
@@ -68,6 +68,7 @@ impl Plugin for Fluid3dPlugin {
 #[require(
     Transform,
     FluidSourcesUniform,
+    FluidSourcesOnResetUniform,
     BoundaryConditions,
     FluidStatus,
     FluidPaused

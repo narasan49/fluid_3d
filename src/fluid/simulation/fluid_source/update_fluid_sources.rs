@@ -16,7 +16,8 @@ use crate::fluid::{
     resources::FluidResources,
     simulation::{
         fluid_source::fluid_sources_uniform::{
-            FluidSourcesBindGroupLayout, FluidSourcesUniformBindGroup,
+            FluidSourcesBindGroupLayout, FluidSourcesOnResetUniformBindGroup,
+            FluidSourcesUniformBindGroup,
         },
         fluid_uniform::{FluidUniformBindGroup, FluidUniformBindGroupLayout},
     },
@@ -79,6 +80,35 @@ impl UpdateFluidSourcesPipeline {
             2,
             &fluid_sources_uniform_bind_group.bind_group,
             &[fluid_sources_uniform_bind_group.index],
+        );
+        pass.dispatch_workgroups(workgroups.x, workgroups.y, workgroups.z);
+        pass.pop_debug_group();
+    }
+
+    pub fn dispatch_on_reset(
+        &self,
+        pass: &mut ComputePass,
+        pipeline_cache: &PipelineCache,
+        bind_group: &UpdateFluidSourcesBindGroup,
+        uniform_bind_group: &FluidUniformBindGroup,
+        fluid_sources_uniform_on_reset_bind_group: &FluidSourcesOnResetUniformBindGroup,
+        resolution: UVec3,
+        workgroup_size: UVec3,
+    ) {
+        pass.push_debug_group("update_fluid_sources_on_reset");
+        let pipeline = pipeline_cache.get_compute_pipeline(self.pipeline).unwrap();
+        let workgroups = num_workgroups(resolution, workgroup_size);
+        pass.set_pipeline(pipeline);
+        pass.set_bind_group(0, &bind_group.bind_group, &[]);
+        pass.set_bind_group(
+            1,
+            &uniform_bind_group.bind_group,
+            &[uniform_bind_group.index],
+        );
+        pass.set_bind_group(
+            2,
+            &fluid_sources_uniform_on_reset_bind_group.bind_group,
+            &[fluid_sources_uniform_on_reset_bind_group.index],
         );
         pass.dispatch_workgroups(workgroups.x, workgroups.y, workgroups.z);
         pass.pop_debug_group();
