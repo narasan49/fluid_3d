@@ -156,7 +156,7 @@ patterns = [
     Pattern(
         [[i, j, k] for i, j in [[0, 0], [0, 1], [0, 2], [1, 0], [1, 2], [1, 3]] for k in range(4)],
         [0, 1, 7],
-        [Triangle(1, 2, 7), Triangle(1, 2, 7), Triangle(4, 1, 11), Triangle(4, 10, 5), Triangle(4, 11, 10)]
+        [Triangle(1, 2, 7), Triangle(1, 7, 11), Triangle(4, 1, 11), Triangle(4, 10, 5), Triangle(4, 11, 10)]
     ),
     # パターン6-b: 頂点の内外は反転するが、面の作り方が異なる。
     Pattern(
