@@ -43,9 +43,6 @@ impl Default for CharacterController {
 }
 
 #[derive(Component)]
-pub struct PlayerCamera;
-
-#[derive(Component)]
 pub struct Grounded;
 
 fn handle_character_input(
