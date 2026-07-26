@@ -5,7 +5,7 @@
 @group(0) @binding(1) var levelset_air0: texture_storage_3d<r32float, read>;
 @group(0) @binding(2) var non_solid_fraction: texture_storage_3d<rgba16float, read>;
 @group(0) @binding(3) var x: texture_storage_3d<r32float, read>;
-@group(0) @binding(4) var r: texture_storage_3d<r32float, write>;
+@group(0) @binding(4) var r: texture_storage_3d<r32float, read_write>;
 @group(0) @binding(5) var<uniform> dx_scale: f32;
 
 @group(1) @binding(0) var<uniform> fluid_uniform: FluidUniform;

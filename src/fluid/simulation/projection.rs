@@ -278,7 +278,8 @@ impl FromWorld for MultigridProjectionPipeline {
                     texture_storage_3d(TextureFormat::R32Float, StorageTextureAccess::ReadOnly),
                     texture_storage_3d(TextureFormat::Rgba16Float, StorageTextureAccess::ReadOnly),
                     texture_storage_3d(TextureFormat::R32Float, StorageTextureAccess::ReadOnly),
-                    texture_storage_3d(TextureFormat::R32Float, StorageTextureAccess::WriteOnly),
+                    // Workaround: 本来はWriteOnlyでよいが、NVIDIA GPUでバリアが挿入されない問題へ暫定的な対処
+                    texture_storage_3d(TextureFormat::R32Float, StorageTextureAccess::ReadWrite),
                     uniform_buffer::<f32>(false),
                 ),
             ),
@@ -475,9 +476,9 @@ pub fn setup_multigrid_resources(
         },
         MultigridNumLevels(num_levels),
         MultigridIterationGonfig {
-            num_pre_smooth: 3,
-            num_post_smooth: 3,
-            num_coarsest: 10,
+            num_pre_smooth: 2,
+            num_post_smooth: 2,
+            num_coarsest: 5,
         },
     ));
 }
