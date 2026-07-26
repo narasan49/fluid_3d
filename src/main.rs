@@ -23,6 +23,7 @@ use crate::{
     },
     game::{
         character_controller::CharacterController,
+        fluid_control::update_auto_stop_fluid_source,
         input_mode::InputMode,
         scene::{ActiveScene, SceneRoot, demo::spawn_demo_scene, single_fluid::spawn_simple_scene},
         solid_body_motion::update_moving_object,
@@ -62,6 +63,7 @@ fn main() {
                 toggle_fluid_source,
                 toggle_free_camera,
                 setup_free_camera,
+                update_auto_stop_fluid_source,
             ),
         )
         .insert_resource(Gravity(9.8 * Vec3::NEG_Y))

@@ -3,6 +3,7 @@ use bevy::app::Plugin;
 use {character_controller::CharacterControllerPlugin, input_mode::InputModePlugin};
 
 pub mod character_controller;
+pub mod fluid_control;
 pub mod input_mode;
 pub mod scene;
 pub mod solid_body_motion;

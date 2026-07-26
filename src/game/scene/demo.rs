@@ -19,6 +19,7 @@ use crate::{
     game::{
         self,
         character_controller::{CharacterController, Player},
+        fluid_control::AutoStopFluidSource,
         solid_body_motion::MovingObject,
     },
     rigid_body::custom_collider::TriangularPrism,
@@ -276,6 +277,7 @@ fn fluids(
                             -source_fluid_half_size.z * 0.4,
                         )),
                         Visibility::Inherited,
+                        AutoStopFluidSource(40.0),
                     ),
                     (
                         Mesh3d(meshes.add(cylinder)),
