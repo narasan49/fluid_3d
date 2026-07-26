@@ -299,6 +299,7 @@ fn fluids(
                     ..default()
                 },
                 Transform::from_translation(Vec3::new(0.0, 0.25, -2.0)),
+                Visibility::Inherited,
                 children![
                     (
                         // 初期の流体ボリューム
