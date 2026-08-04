@@ -198,7 +198,7 @@ patterns = [
     Pattern(
         [[0, j, k] for j in range(3) for k in range(4)],
         [0, 2, 3, 7],
-        [Triangle(0, 4, 6), Triangle(0, 6, 2), Triangle(2, 6, 11), Triangle(2, 11, 7)]
+        [Triangle(0, 4, 6), Triangle(0, 6, 2), Triangle(2, 6, 10), Triangle(6, 11, 10)]
     ),
     # パターン12
     Pattern(

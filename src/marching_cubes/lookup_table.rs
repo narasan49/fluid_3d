@@ -131,6 +131,7 @@ impl EdgeTriangles {
         }
     }
 }
+
 pub const LUT: [EdgeTriangles; 256] = [
     EdgeTriangles::ZERO,
     EdgeTriangles::one([EdgeTriangle::new([[0, 1], [0, 4], [0, 2]])]),
@@ -250,8 +251,8 @@ pub const LUT: [EdgeTriangles; 256] = [
     EdgeTriangles::four([
         EdgeTriangle::new([[2, 3], [3, 7], [1, 5]]),
         EdgeTriangle::new([[2, 3], [1, 5], [0, 2]]),
-        EdgeTriangle::new([[0, 2], [1, 5], [4, 5]]),
-        EdgeTriangle::new([[0, 2], [4, 5], [0, 4]]),
+        EdgeTriangle::new([[0, 2], [1, 5], [4, 6]]),
+        EdgeTriangle::new([[1, 5], [4, 5], [4, 6]]),
     ]),
     EdgeTriangles::five([
         EdgeTriangle::new([[1, 3], [0, 2], [0, 4]]),
@@ -357,8 +358,8 @@ pub const LUT: [EdgeTriangles; 256] = [
     EdgeTriangles::four([
         EdgeTriangle::new([[0, 2], [2, 6], [3, 7]]),
         EdgeTriangle::new([[0, 2], [3, 7], [0, 1]]),
-        EdgeTriangle::new([[0, 1], [3, 7], [5, 7]]),
-        EdgeTriangle::new([[0, 1], [5, 7], [1, 5]]),
+        EdgeTriangle::new([[0, 1], [3, 7], [4, 5]]),
+        EdgeTriangle::new([[3, 7], [5, 7], [4, 5]]),
     ]),
     EdgeTriangles::three([
         EdgeTriangle::new([[4, 5], [0, 4], [5, 7]]),
@@ -393,8 +394,8 @@ pub const LUT: [EdgeTriangles; 256] = [
     EdgeTriangles::four([
         EdgeTriangle::new([[1, 5], [5, 7], [4, 6]]),
         EdgeTriangle::new([[1, 5], [4, 6], [0, 1]]),
-        EdgeTriangle::new([[0, 1], [4, 6], [2, 6]]),
-        EdgeTriangle::new([[0, 1], [2, 6], [0, 2]]),
+        EdgeTriangle::new([[0, 1], [4, 6], [2, 3]]),
+        EdgeTriangle::new([[4, 6], [2, 6], [2, 3]]),
     ]),
     EdgeTriangles::four([
         EdgeTriangle::new([[0, 1], [0, 2], [0, 4]]),
@@ -488,8 +489,8 @@ pub const LUT: [EdgeTriangles; 256] = [
     EdgeTriangles::four([
         EdgeTriangle::new([[1, 3], [1, 5], [0, 4]]),
         EdgeTriangle::new([[1, 3], [0, 4], [2, 3]]),
-        EdgeTriangle::new([[2, 3], [0, 4], [4, 6]]),
-        EdgeTriangle::new([[2, 3], [4, 6], [2, 6]]),
+        EdgeTriangle::new([[2, 3], [0, 4], [6, 7]]),
+        EdgeTriangle::new([[0, 4], [4, 6], [6, 7]]),
     ]),
     EdgeTriangles::four([
         EdgeTriangle::new([[1, 3], [6, 7], [3, 7]]),
@@ -608,8 +609,8 @@ pub const LUT: [EdgeTriangles; 256] = [
     EdgeTriangles::four([
         EdgeTriangle::new([[0, 4], [4, 5], [6, 7]]),
         EdgeTriangle::new([[0, 4], [6, 7], [0, 2]]),
-        EdgeTriangle::new([[0, 2], [6, 7], [3, 7]]),
-        EdgeTriangle::new([[0, 2], [3, 7], [2, 3]]),
+        EdgeTriangle::new([[0, 2], [6, 7], [1, 3]]),
+        EdgeTriangle::new([[6, 7], [3, 7], [1, 3]]),
     ]),
     EdgeTriangles::three([
         EdgeTriangle::new([[1, 3], [0, 1], [3, 7]]),
@@ -733,8 +734,8 @@ pub const LUT: [EdgeTriangles; 256] = [
     EdgeTriangles::four([
         EdgeTriangle::new([[6, 7], [2, 6], [0, 4]]),
         EdgeTriangle::new([[6, 7], [0, 4], [5, 7]]),
-        EdgeTriangle::new([[5, 7], [0, 4], [0, 1]]),
-        EdgeTriangle::new([[5, 7], [0, 1], [1, 5]]),
+        EdgeTriangle::new([[5, 7], [0, 4], [1, 3]]),
+        EdgeTriangle::new([[0, 4], [0, 1], [1, 3]]),
     ]),
     EdgeTriangles::three([
         EdgeTriangle::new([[2, 6], [0, 2], [6, 7]]),
@@ -869,8 +870,8 @@ pub const LUT: [EdgeTriangles; 256] = [
     EdgeTriangles::four([
         EdgeTriangle::new([[0, 1], [0, 4], [2, 6]]),
         EdgeTriangle::new([[0, 1], [2, 6], [1, 3]]),
-        EdgeTriangle::new([[1, 3], [2, 6], [6, 7]]),
-        EdgeTriangle::new([[1, 3], [6, 7], [3, 7]]),
+        EdgeTriangle::new([[1, 3], [2, 6], [5, 7]]),
+        EdgeTriangle::new([[2, 6], [6, 7], [5, 7]]),
     ]),
     EdgeTriangles::four([
         EdgeTriangle::new([[0, 2], [2, 6], [6, 7]]),
@@ -996,8 +997,8 @@ pub const LUT: [EdgeTriangles; 256] = [
     EdgeTriangles::four([
         EdgeTriangle::new([[3, 7], [6, 7], [4, 5]]),
         EdgeTriangle::new([[3, 7], [4, 5], [1, 3]]),
-        EdgeTriangle::new([[1, 3], [4, 5], [0, 4]]),
-        EdgeTriangle::new([[1, 3], [0, 4], [0, 1]]),
+        EdgeTriangle::new([[1, 3], [4, 5], [0, 2]]),
+        EdgeTriangle::new([[4, 5], [0, 4], [0, 2]]),
     ]),
     EdgeTriangles::five([
         EdgeTriangle::new([[1, 5], [3, 7], [2, 3]]),
@@ -1108,8 +1109,8 @@ pub const LUT: [EdgeTriangles; 256] = [
     EdgeTriangles::four([
         EdgeTriangle::new([[4, 6], [0, 4], [1, 5]]),
         EdgeTriangle::new([[4, 6], [1, 5], [6, 7]]),
-        EdgeTriangle::new([[6, 7], [1, 5], [1, 3]]),
-        EdgeTriangle::new([[6, 7], [1, 3], [3, 7]]),
+        EdgeTriangle::new([[6, 7], [1, 5], [2, 3]]),
+        EdgeTriangle::new([[1, 5], [1, 3], [2, 3]]),
     ]),
     EdgeTriangles::three([
         EdgeTriangle::new([[6, 7], [4, 6], [0, 2]]),
@@ -1199,8 +1200,8 @@ pub const LUT: [EdgeTriangles; 256] = [
     EdgeTriangles::four([
         EdgeTriangle::new([[2, 6], [4, 6], [5, 7]]),
         EdgeTriangle::new([[2, 6], [5, 7], [2, 3]]),
-        EdgeTriangle::new([[2, 3], [5, 7], [1, 5]]),
-        EdgeTriangle::new([[2, 3], [1, 5], [1, 3]]),
+        EdgeTriangle::new([[2, 3], [5, 7], [0, 1]]),
+        EdgeTriangle::new([[5, 7], [1, 5], [0, 1]]),
     ]),
     EdgeTriangles::three([
         EdgeTriangle::new([[5, 7], [1, 5], [0, 4]]),
@@ -1233,8 +1234,8 @@ pub const LUT: [EdgeTriangles; 256] = [
     EdgeTriangles::four([
         EdgeTriangle::new([[5, 7], [3, 7], [2, 6]]),
         EdgeTriangle::new([[5, 7], [2, 6], [4, 5]]),
-        EdgeTriangle::new([[4, 5], [2, 6], [0, 2]]),
-        EdgeTriangle::new([[4, 5], [0, 2], [0, 4]]),
+        EdgeTriangle::new([[4, 5], [2, 6], [0, 1]]),
+        EdgeTriangle::new([[2, 6], [0, 2], [0, 1]]),
     ]),
     EdgeTriangles::four([
         EdgeTriangle::new([[5, 7], [1, 5], [4, 5]]),
@@ -1326,8 +1327,8 @@ pub const LUT: [EdgeTriangles; 256] = [
     EdgeTriangles::four([
         EdgeTriangle::new([[4, 5], [1, 5], [3, 7]]),
         EdgeTriangle::new([[4, 5], [3, 7], [4, 6]]),
-        EdgeTriangle::new([[4, 6], [3, 7], [2, 3]]),
-        EdgeTriangle::new([[4, 6], [2, 3], [2, 6]]),
+        EdgeTriangle::new([[4, 6], [3, 7], [0, 2]]),
+        EdgeTriangle::new([[3, 7], [2, 3], [0, 2]]),
     ]),
     EdgeTriangles::three([
         EdgeTriangle::new([[3, 7], [2, 3], [0, 1]]),
