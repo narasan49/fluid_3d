@@ -64,6 +64,15 @@ fn sdf_capsule(capsule: Capsule, inverse_transform: mat4x4f, x: vec3f) -> f32 {
     }
 }
 
+fn grad_sdf_capsule(capsule: Capsule, inverse_transform: mat4x4f, x: vec3f) -> vec3f {
+    let xl = inverse_transform * vec4f(x, 1.0);
+    if abs(xl.y) < capsule.half_length {
+        return normalize(vec3f(xl.x, 0.0, xl.z));
+    } else {
+        return normalize(vec3f(xl.x, abs(xl.y) - capsule.half_length, xl.z));
+    }
+}
+
 fn sdf_cube(cube: Cube, inverse_transform: mat4x4f, x: vec3f) -> f32 {
     let xl = (inverse_transform * vec4f(x, 1.0)).xyz;
     let xl_abs = abs(xl);
@@ -175,6 +184,20 @@ fn sdf_solid_body(solid: SolidBody, x: vec3f) -> f32 {
         default:
         {
             return LARGE_FLOAT;
+        }
+    }
+}
+
+fn grad_sdf_solid_body(solid: SolidBody, x: vec3f) -> vec3f {
+    switch solid.shape {
+        case SHAPE_CAPSULE:
+        {
+            let capsule = to_capsule(solid);
+            return grad_sdf_capsule(capsule, solid.inverse_transform, x);
+        }
+        default:
+        {
+            return vec3f(0.0, 1.0, 0.0);
         }
     }
 }

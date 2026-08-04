@@ -1,5 +1,6 @@
+pub mod update_shapes_buffer;
+
 use bevy::{
-    core_pipeline::{Core3d, Core3dSystems::MainPass},
     material::descriptor::{
         BindGroupLayoutDescriptor, CachedComputePipelineId, ComputePipelineDescriptor,
     },
@@ -15,72 +16,61 @@ use bevy::{
     },
 };
 
-use crate::marching_cubes::MarchingCubes;
+use crate::{fluid::workgroup::num_workgroups, marching_cubes::MarchingCubes};
 
-pub struct BuildVertexBufferPlugin;
+pub struct ShapesToSdfPlugin;
 
-impl Plugin for BuildVertexBufferPlugin {
+impl Plugin for ShapesToSdfPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(ExtractComponentPlugin::<BuildVertexBufferResource>::default());
+        app.add_plugins(ExtractComponentPlugin::<ShapesToSdfResource>::default())
+            .add_systems(Update, update_shapes_buffer::update_shapes_buffer);
+
         let Some(render_app) = app.get_sub_app_mut(RenderApp) else {
             return;
         };
-        render_app
-            .add_systems(
-                Render,
-                prepare_bind_group.in_set(RenderSystems::PrepareBindGroups),
-            )
-            .add_systems(
-                Core3d,
-                (
-                    super::shapes_to_sdf::run_shapes_to_sdf_pass,
-                    build_vertex_buffer,
-                )
-                    .chain()
-                    .before(MainPass),
-            );
+
+        render_app.add_systems(
+            Render,
+            prepare_bind_group.in_set(RenderSystems::PrepareBindGroups),
+        );
     }
 
     fn finish(&self, app: &mut App) {
         let Some(render_app) = app.get_sub_app_mut(RenderApp) else {
             return;
         };
-        render_app.init_resource::<BuildVertexBufferPipeline>();
+
+        render_app.init_resource::<ShapesToSdfPipeline>();
     }
 }
 
 #[derive(Component, ExtractComponent, Clone, AsBindGroup)]
-pub struct BuildVertexBufferResource {
-    #[storage(0, visibility(compute))]
-    pub vertices: Handle<ShaderBuffer>,
-    #[storage(1, visibility(compute))]
-    pub indirect_args: Handle<ShaderBuffer>,
-    #[storage_texture(2, image_format = Rgba16Float, access = ReadOnly, dimension = "3d")]
+pub struct ShapesToSdfResource {
+    #[storage_texture(0, image_format = Rgba16Float, dimension = "3d", access = WriteOnly)]
     pub grad_sdf: Handle<Image>,
-    #[storage(3, read_only, visibility(compute))]
-    pub lookup_table: Handle<ShaderBuffer>,
+    #[storage(1, visibility(compute))]
+    pub shapes: Handle<ShaderBuffer>,
 }
 
 #[derive(Resource)]
-struct BuildVertexBufferPipeline {
+pub struct ShapesToSdfPipeline {
     pipeline: CachedComputePipelineId,
     bind_group_layout: BindGroupLayoutDescriptor,
 }
 
-impl FromWorld for BuildVertexBufferPipeline {
+impl FromWorld for ShapesToSdfPipeline {
     fn from_world(world: &mut World) -> Self {
         let render_device = world.resource::<RenderDevice>();
         let pipeline_cache = world.resource::<PipelineCache>();
         let asset_server = world.resource::<AssetServer>();
 
-        let bind_group_layout =
-            BuildVertexBufferResource::bind_group_layout_descriptor(render_device);
+        let bind_group_layout = ShapesToSdfResource::bind_group_layout_descriptor(render_device);
 
         let pipeline = pipeline_cache.queue_compute_pipeline(ComputePipelineDescriptor {
-            label: Some("build_vertex_buffer_pipeline".into()),
+            label: Some("shapes_to_sdf_pipeline".into()),
             layout: vec![bind_group_layout.clone()],
-            shader: asset_server.load("shaders/marching_cubes/build_vertex_buffer.wgsl"),
-            entry_point: Some("build_vertex_buffer".into()),
+            shader: asset_server.load("shaders/marching_cubes/shapes_to_sdf.wgsl"),
+            entry_point: Some("shapes_to_sdf".into()),
             ..default()
         });
 
@@ -92,14 +82,14 @@ impl FromWorld for BuildVertexBufferPipeline {
 }
 
 #[derive(Component)]
-struct BuildVertexBufferBindGroup {
+pub struct ShapesToSdfBindGroup {
     bind_group: BindGroup,
 }
 
 fn prepare_bind_group<'a>(
     mut commands: Commands,
-    query: Query<(Entity, &BuildVertexBufferResource)>,
-    pipeline: Res<BuildVertexBufferPipeline>,
+    query: Query<(Entity, &ShapesToSdfResource)>,
+    pipeline: Res<ShapesToSdfPipeline>,
     render_device: Res<RenderDevice>,
     pipeline_cache: Res<PipelineCache>,
     mut param: (
@@ -121,49 +111,34 @@ fn prepare_bind_group<'a>(
 
         commands
             .entity(entity)
-            .insert(BuildVertexBufferBindGroup { bind_group });
+            .insert(ShapesToSdfBindGroup { bind_group });
     }
 }
 
-fn build_vertex_buffer(
+pub fn run_shapes_to_sdf_pass(
     mut render_context: RenderContext,
-    query: Query<(
-        &MarchingCubes,
-        &BuildVertexBufferBindGroup,
-        &BuildVertexBufferResource,
-    )>,
-    pipeline: Res<BuildVertexBufferPipeline>,
+    query: Query<(&MarchingCubes, &ShapesToSdfBindGroup)>,
+    pipeline: Res<ShapesToSdfPipeline>,
     pipeline_cache: Res<PipelineCache>,
-    buffers: Res<RenderAssets<GpuShaderBuffer>>,
 ) {
     let Some(pipeline) = pipeline_cache.get_compute_pipeline(pipeline.pipeline) else {
         return;
     };
 
-    for (marching_cubes, bind_group, resource) in &query {
-        let Some(indirect_args) = buffers.get(&resource.indirect_args) else {
-            continue;
-        };
-        info_once!("[once] build vertex buffer");
-
-        // vertex countをリセット
-        render_context
-            .command_encoder()
-            .clear_buffer(&indirect_args.buffer, 0, Some(4u64));
-
+    for (marcing_cubes, bind_group) in &query {
         let mut pass =
             render_context
                 .command_encoder()
                 .begin_compute_pass(&ComputePassDescriptor {
-                    label: Some("build_vertex_buffer"),
+                    label: Some("shapes_to_sdf"),
                     ..default()
                 });
 
         let workgroup_size = UVec3::splat(8);
-        let num_workgroups =
-            (marching_cubes.resolution - UVec3::ONE + workgroup_size - UVec3::ONE) / workgroup_size;
+        let workgroups = num_workgroups(marcing_cubes.resolution, workgroup_size);
+
         pass.set_pipeline(pipeline);
         pass.set_bind_group(0, &bind_group.bind_group, &[]);
-        pass.dispatch_workgroups(num_workgroups.x, num_workgroups.y, num_workgroups.z);
+        pass.dispatch_workgroups(workgroups.x, workgroups.y, workgroups.z);
     }
 }

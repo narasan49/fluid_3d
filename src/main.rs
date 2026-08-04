@@ -12,6 +12,7 @@ use bevy::{
     render::{
         RenderPlugin,
         settings::{Backends, RenderCreation, WgpuSettings},
+        storage::ShaderBuffer,
     },
 };
 
@@ -25,7 +26,10 @@ use crate::{
         character_controller::CharacterController,
         fluid_control::update_auto_stop_fluid_source,
         input_mode::InputMode,
-        scene::{ActiveScene, SceneRoot, demo::spawn_demo_scene, single_fluid::spawn_simple_scene},
+        scene::{
+            ActiveScene, SceneRoot, demo::spawn_demo_scene, single_fluid::spawn_simple_scene,
+            test_marching_cubes::spawn_test_marching_cubes_scene,
+        },
         solid_body_motion::update_moving_object,
     },
     marching_cubes::{MarchingCubes, MarchingCubesPlugin},
@@ -81,14 +85,21 @@ fn setup_scene(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    mut images: ResMut<Assets<Image>>,
+    mut buffers: ResMut<Assets<ShaderBuffer>>,
     grid_length: Res<GridLength>,
     active_scene: Res<ActiveScene>,
 ) {
     match *active_scene {
         ActiveScene::Demo => {
-            spawn_demo_scene(&mut commands, &mut meshes, &mut materials, &grid_length)
+            spawn_demo_scene(&mut commands, &mut meshes, &mut materials, &grid_length);
         }
-        ActiveScene::SingleFluid => spawn_simple_scene(&mut commands),
+        ActiveScene::SingleFluid => {
+            spawn_simple_scene(&mut commands);
+        }
+        ActiveScene::TestMarchingCubes => {
+            spawn_test_marching_cubes_scene(&mut commands, &mut images, &mut buffers);
+        }
     }
 }
 

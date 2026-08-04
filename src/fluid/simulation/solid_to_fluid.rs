@@ -81,7 +81,7 @@ pub struct SolidBody {
     pub inv_transform: Mat4,
 }
 
-#[derive(ShaderType, Default)]
+#[derive(ShaderType, Default, Clone, Copy)]
 pub struct ShapeVariant {
     pub shape_type: u32,
     pub values: [f32; 8],

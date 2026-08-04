@@ -1,5 +1,6 @@
 pub mod demo;
 pub mod single_fluid;
+pub mod test_marching_cubes;
 
 use bevy::prelude::*;
 
@@ -11,4 +12,5 @@ pub struct SceneRoot;
 pub enum ActiveScene {
     Demo,
     SingleFluid,
+    TestMarchingCubes,
 }

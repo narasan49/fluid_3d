@@ -24,6 +24,7 @@ enum MenuAction {
     Quit,
     SimpleScene,
     DemoScene,
+    TestMarchingCubes,
 }
 
 #[derive(Component)]
@@ -55,6 +56,7 @@ fn spwan_root(mut commands: Commands) {
                     (Text::new("Select Scene")),
                     (MenuAction::DemoScene, button("Demo")),
                     (MenuAction::SimpleScene, button("SimpleFluid")),
+                    (MenuAction::TestMarchingCubes, button("TestMarchingCubes")),
                 ],
             ),
             (
@@ -122,6 +124,17 @@ fn menu_action(
                     }
                     *input_mode = InputMode::Game;
                     *active_scene = ActiveScene::Demo;
+                }
+                MenuAction::TestMarchingCubes => {
+                    for entity in &q_scene {
+                        commands.entity(entity).despawn();
+                        commands.run_system_cached(crate::setup_scene);
+                    }
+                    for mut visibility in &mut q_menu {
+                        *visibility = Visibility::Hidden;
+                    }
+                    *input_mode = InputMode::Game;
+                    *active_scene = ActiveScene::TestMarchingCubes;
                 }
             }
         }

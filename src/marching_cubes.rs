@@ -2,6 +2,7 @@ pub mod build_vertex_buffer;
 pub mod draw;
 pub mod lookup_table;
 pub mod setup;
+pub mod shapes_to_sdf;
 
 use bevy::{
     prelude::*,
@@ -10,16 +11,20 @@ use bevy::{
 
 use crate::marching_cubes::{
     build_vertex_buffer::BuildVertexBufferPlugin, draw::MarchingCubesDrawPlugin,
-    setup::setup_marching_cubes_resources,
+    setup::setup_marching_cubes_resources, shapes_to_sdf::ShapesToSdfPlugin,
 };
 
 pub struct MarchingCubesPlugin;
 
 impl Plugin for MarchingCubesPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((BuildVertexBufferPlugin, MarchingCubesDrawPlugin))
-            .add_plugins(ExtractComponentPlugin::<MarchingCubes>::default())
-            .add_systems(Update, setup_marching_cubes_resources);
+        app.add_plugins((
+            BuildVertexBufferPlugin,
+            MarchingCubesDrawPlugin,
+            ShapesToSdfPlugin,
+        ))
+        .add_plugins(ExtractComponentPlugin::<MarchingCubes>::default())
+        .add_systems(Update, setup_marching_cubes_resources);
     }
 }
 
